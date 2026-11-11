@@ -98,8 +98,7 @@ export class EnfrentamientosService {
       if (reto.estado !== EstadoReto.PENDIENTE) throw new ConflictException('El reto ya no está pendiente');
       if (reto.caducaEn <= new Date()) {
         reto.estado = EstadoReto.CADUCADO;
-        await repo.save(reto);
-        throw new ConflictException('El plazo de aceptación del reto ha terminado');
+        return repo.save(reto);
       }
       reto.estado = EstadoReto.RECHAZADO;
       return repo.save(reto);

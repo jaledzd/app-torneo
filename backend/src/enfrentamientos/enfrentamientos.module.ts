@@ -9,7 +9,7 @@ import { RetoEntity } from './dominio/reto.entity';
 import { EnfrentamientosController } from './enfrentamientos.controller';
 import { EnfrentamientosService } from './enfrentamientos.service';
 @Module({
-  imports:: [TypeOrmModule.forFeature([EventoEntity, ParticipanteEntity, PuestoEntity, VideojuegoEntity, PartidaEntity, RetoEntity])],
+  imports: [TypeOrmModule.forFeature([EventoEntity, ParticipanteEntity, PuestoEntity, VideojuegoEntity, PartidaEntity, RetoEntity])],
   controllers: [EnfrentamientosController],
   providers: [EnfrentamientosService],
   exports: [EnfrentamientosService],

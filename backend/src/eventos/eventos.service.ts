@@ -6,7 +6,11 @@ import { EstadoEvento } from './dominio/estado-evento.enum';
 import { CrearEventoDto } from './dto/crear-evento.dto';
 import { ActualizarEventoDto } from './dto/actualizar-evento.dto';
 
-/** Casos de uso y reglas de negocio de las ediciones del torneo. */
+/**
+ * Casos de uso y reglas de negocio de las ediciones del torneo.
+ * Las transiciones usan UPDATE condicional para evitar que dos peticiones
+ * simultáneas cambien el estado partiendo de la misma fase.
+ */
 @Injectable()
 export class EventosService {
   constructor(
@@ -18,14 +22,17 @@ export class EventosService {
     const inicio = new Date(dto.fechaInicio);
     const cierre = new Date(dto.fechaCierreEnfrentamientos);
     this.validarFechas(inicio, cierre);
+    const premio = dto.premio.trim();
+    if (!premio) throw new BadRequestException('El premio no puede estar vacío');
 
-    return this.eventosRepository.save(this.eventosRepository.create({
+    const evento = this.eventosRepository.create({
       fechaInicio: inicio,
       fechaCierreEnfrentamientos: cierre,
       duracionPeriodoAdicionalMinutos: dto.duracionPeriodoAdicionalMinutos,
-      premio: dto.premio.trim(),
+      premio,
       estado: EstadoEvento.BORRADOR,
-    }));
+    });
+    return this.eventosRepository.save(evento);
   }
 
   listar(): Promise<EventoEntity[]> {
@@ -50,12 +57,28 @@ export class EventosService {
       : evento.fechaCierreEnfrentamientos;
     this.validarFechas(inicio, cierre);
 
-    if (dto.fechaInicio !== undefined) evento.fechaInicio = inicio;
-    if (dto.fechaCierreEnfrentamientos !== undefined) evento.fechaCierreEnfrentamientos = cierre;
-    if (dto.duracionPeriodoAdicionalMinutos !== undefined) evento.duracionPeriodoAdicionalMinutos = dto.duracionPeriodoAdicionalMinutos;
-    if (dto.premio !== undefined) evento.premio = dto.premio.trim();
+    const cambios: Partial<EventoEntity> = {};
+    if (dto.fechaInicio !== undefined) cambios.fechaInicio = inicio;
+    if (dto.fechaCierreEnfrentamientos !== undefined) cambios.fechaCierreEnfrentamientos = cierre;
+    if (dto.duracionPeriodoAdicionalMinutos !== undefined) cambios.duracionPeriodoAdicionalMinutos = dto.duracionPeriodoAdicionalMinutos;
+    if (dto.premio !== undefined) {
+      const premio = dto.premio.trim();
+      if (!premio) throw new BadRequestException('El premio no puede estar vacío');
+      cambios.premio = premio;
+    }
 
-    return this.eventosRepository.save(evento);
+    if (Object.keys(cambios).length === 0) return evento;
+
+    // La condición estado=BORRADOR evita sobrescribir una edición que haya
+    // cambiado de fase mientras se procesaba la petición.
+    const resultado = await this.eventosRepository.update(
+      { id, estado: EstadoEvento.BORRADOR },
+      cambios,
+    );
+    if (!resultado.affected) {
+      throw new BadRequestException('La edición ha cambiado de estado; vuelve a consultar antes de modificarla');
+    }
+    return this.obtenerPorId(id);
   }
 
   async iniciar(id: string): Promise<EventoEntity> {
@@ -63,11 +86,37 @@ export class EventosService {
     if (evento.estado !== EstadoEvento.BORRADOR) {
       throw new BadRequestException('Solo se puede iniciar una edición en estado BORRADOR');
     }
-    if (evento.fechaInicio.getTime() <= Date.now()) {
-      throw new BadRequestException('La fecha de inicio debe estar en el futuro para iniciar la edición');
+    if (Date.now() < evento.fechaInicio.getTime()) {
+      throw new BadRequestException('Todavía no ha llegado la fecha de inicio configurada');
     }
-    evento.estado = EstadoEvento.EN_CURSO;
-    return this.eventosRepository.save(evento);
+
+    const resultado = await this.eventosRepository.update(
+      { id, estado: EstadoEvento.BORRADOR },
+      { estado: EstadoEvento.EN_CURSO },
+    );
+    if (!resultado.affected) {
+      throw new BadRequestException('La edición ya ha cambiado de estado');
+    }
+    return this.obtenerPorId(id);
+  }
+
+  async cerrarEnfrentamientos(id: string): Promise<EventoEntity> {
+    const evento = await this.obtenerPorId(id);
+    if (evento.estado !== EstadoEvento.EN_CURSO) {
+      throw new BadRequestException('Solo se pueden cerrar enfrentamientos de una edición EN_CURSO');
+    }
+    if (Date.now() < evento.fechaCierreEnfrentamientos.getTime()) {
+      throw new BadRequestException('Todavía no ha llegado la hora de cierre de enfrentamientos');
+    }
+
+    const resultado = await this.eventosRepository.update(
+      { id, estado: EstadoEvento.EN_CURSO },
+      { estado: EstadoEvento.PERIODO_ADICIONAL },
+    );
+    if (!resultado.affected) {
+      throw new BadRequestException('La edición ya ha cambiado de estado');
+    }
+    return this.obtenerPorId(id);
   }
 
   private validarFechas(inicio: Date, cierre: Date): void {

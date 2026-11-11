@@ -47,12 +47,15 @@ export class ParticipantesService {
   }
 
   async retirar(eventoId: string, participanteId: string): Promise<ParticipanteEntity> {
-    const participante = await this.participantes.findOne({ where: { id: participanteId, eventoId } });
-    if (!participante) throw new NotFoundException('No se ha encontrado la inscripción');
-    if (participante.estado !== EstadoParticipante.INSCRITO) throw new BadRequestException('La inscripción ya está retirada');
-    const partidaActiva = await this.fuenteDatos.query('SELECT 1 FROM "partidas_jugadores_activos" WHERE "participante_id" = $1 LIMIT 1', [participanteId]);
-    if (partidaActiva.length) throw new ConflictException('No puedes retirar a un participante que tiene una partida en curso');
-    participante.estado = EstadoParticipante.RETIRADO;
-    return this.participantes.save(participante);
+    return this.fuenteDatos.transaction(async (gestor) => {
+      const repo = gestor.getRepository(ParticipanteEntity);
+      const participante = await repo.findOne({ where: { id: participanteId, eventoId }, lock: { mode: 'pessimistic_write' } });
+      if (!participante) throw new NotFoundException('No se ha encontrado la inscripción');
+      if (participante.estado !== EstadoParticipante.INSCRITO) throw new BadRequestException('La inscripción ya está retirada');
+      const partidaActiva = await gestor.query('SELECT 1 FROM "partidas_jugadores_activos" WHERE "participante_id" = $1 LIMIT 1', [participanteId]);
+      if (partidaActiva.length) throw new ConflictException('No puedes retirar a un participante que tiene una partida en curso');
+      participante.estado = EstadoParticipante.RETIRADO;
+      return repo.save(participante);
+    });
   }
 }

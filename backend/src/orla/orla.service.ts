@@ -20,7 +20,9 @@ export class OrlaService {
     if (!Number.isInteger(cantidad) || cantidad < 1 || cantidad > 500) throw new BadRequestException('La cantidad debe estar entre 1 y 500');
     return this.fuenteDatos.transaction(async (gestor) => {
       const evento = await gestor.getRepository(EventoEntity).findOne({ where: { id: eventoId }, lock: { mode: 'pessimistic_write' } });
-      if (!evento || ![EstadoEvento.BORRADOR, EstadoEvento.EN_CURSO].includes(evento.estado)) throw new BadRequestException('No se pueden emitir papeletas en esta fase');
+      if (!evento || ![EstadoEvento.BORRADOR, EstadoEvento.EN_CURSO, EstadoEvento.PERIODO_ADICIONAL].includes(evento.estado)) throw new BadRequestException('No se pueden emitir papeletas en esta fase');
+      const limite = evento.fechaCierreEnfrentamientos.getTime() + evento.duracionPeriodoAdicionalMinutos * 60_000;
+      if (evento.estado === EstadoEvento.PERIODO_ADICIONAL && Date.now() > limite) throw new BadRequestException('El plazo de emisión de papeletas ha terminado');
       const participante = await gestor.getRepository(ParticipanteEntity).findOne({ where: { id: participanteId, eventoId, estado: EstadoParticipante.INSCRITO } });
       if (!participante) throw new NotFoundException('No existe un participante inscrito en esta edición');
       const repo = gestor.getRepository(PapeletaEntity);

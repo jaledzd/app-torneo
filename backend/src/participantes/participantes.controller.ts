@@ -17,19 +17,19 @@ export class ParticipantesController {
 
   @Roles(RolUsuario.ANFITRION, RolUsuario.ADMINISTRADOR)
   @Post()
-  inscribir(@Param('eventoId', new ParseUUIDPipe()) eventoId: string, @Body() datos: InscribirParticipanteDto) {
-    return this.servicio.inscribir(eventoId, datos.usuarioId);
+  inscribir(@Param('eventoId', new ParseUUIDPipe()) eventoId: string, @Body() datos: InscribirParticipanteDto, @Req() peticion: Request & { user: UsuarioAutenticado }) {
+    return this.servicio.inscribirPorAnfitrion(eventoId, datos.usuarioId, peticion.user);
   }
 
   @Roles(RolUsuario.ANFITRION, RolUsuario.ADMINISTRADOR)
   @Get()
-  listar(@Param('eventoId', new ParseUUIDPipe()) eventoId: string) {
-    return this.servicio.listar(eventoId);
+  listar(@Param('eventoId', new ParseUUIDPipe()) eventoId: string, @Req() peticion: Request & { user: UsuarioAutenticado }) {
+    return this.servicio.listar(eventoId, peticion.user);
   }
 
   @Roles(RolUsuario.ANFITRION, RolUsuario.ADMINISTRADOR)
   @Delete(':participanteId')
-  retirar(@Param('eventoId', new ParseUUIDPipe()) eventoId: string, @Param('participanteId', new ParseUUIDPipe()) participanteId: string) {
-    return this.servicio.retirar(eventoId, participanteId);
+  retirar(@Param('eventoId', new ParseUUIDPipe()) eventoId: string, @Param('participanteId', new ParseUUIDPipe()) participanteId: string, @Req() peticion: Request & { user: UsuarioAutenticado }) {
+    return this.servicio.retirar(eventoId, participanteId, peticion.user);
   }
 }

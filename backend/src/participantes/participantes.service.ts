@@ -1,6 +1,8 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
+import { UsuarioAutenticado } from '../autenticacion/dominio/usuario-autenticado.interface';
+import { RolUsuario } from '../usuarios/dominio/rol-usuario.enum';
 import { EventoEntity } from '../eventos/dominio/evento.entity';
 import { EstadoEvento } from '../eventos/dominio/estado-evento.enum';
 import { UsuarioEntity } from '../usuarios/dominio/usuario.entity';
@@ -36,7 +38,13 @@ export class ParticipantesService {
     });
   }
 
-  async listar(eventoId: string): Promise<ParticipanteEntity[]> {
+  async inscribirPorAnfitrion(eventoId: string, usuarioId: string, actor: UsuarioAutenticado): Promise<ParticipanteEntity> {
+    await this.autorizarEdicion(eventoId, actor);
+    return this.inscribir(eventoId, usuarioId);
+  }
+
+  async listar(eventoId: string, actor: UsuarioAutenticado): Promise<ParticipanteEntity[]> {
+    await this.autorizarEdicion(eventoId, actor);
     const evento = await this.eventos.findOne({ where: { id: eventoId } });
     if (!evento) throw new NotFoundException('No se ha encontrado la edición');
     return this.participantes.find({
@@ -46,10 +54,11 @@ export class ParticipantesService {
     });
   }
 
-  async retirar(eventoId: string, participanteId: string): Promise<ParticipanteEntity> {
+  async retirar(eventoId: string, participanteId: string, actor: UsuarioAutenticado): Promise<ParticipanteEntity> {
     return this.fuenteDatos.transaction(async (gestor) => {
       const evento = await gestor.getRepository(EventoEntity).findOne({ where: { id: eventoId }, lock: { mode: 'pessimistic_write' } });
       if (!evento) throw new NotFoundException('No se ha encontrado la edición');
+      this.autorizar(evento, actor);
       if (![EstadoEvento.BORRADOR, EstadoEvento.EN_CURSO, EstadoEvento.PERIODO_ADICIONAL].includes(evento.estado)) {
         throw new BadRequestException('No se puede modificar una inscripción en una edición finalizada');
       }
@@ -62,5 +71,17 @@ export class ParticipantesService {
       participante.estado = EstadoParticipante.RETIRADO;
       return repo.save(participante);
     });
+  }
+
+  private async autorizarEdicion(eventoId: string, actor: UsuarioAutenticado): Promise<void> {
+    const evento = await this.eventos.findOne({ where: { id: eventoId } });
+    if (!evento) throw new NotFoundException('No se ha encontrado la edición');
+    this.autorizar(evento, actor);
+  }
+
+  private autorizar(evento: EventoEntity, actor: UsuarioAutenticado): void {
+    if (actor.rol !== RolUsuario.ADMINISTRADOR && evento.anfitrionId !== actor.id) {
+      throw new ForbiddenException('Solo el anfitrión responsable o un administrador puede gestionar las inscripciones');
+    }
   }
 }

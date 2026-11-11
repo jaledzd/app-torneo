@@ -1,4 +1,4 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { VideojuegoEntity } from './dominio/videojuego.entity';
@@ -10,7 +10,8 @@ export class VideojuegosService {
 
   async crear(datos: CrearVideojuegoDto): Promise<VideojuegoEntity> {
     const nombre = datos.nombre.trim();
-    if (await this.repositorio.findOne({ where: { nombre } })) {
+    if (!nombre) throw new BadRequestException('El nombre del videojuego no puede estar vacío');
+    if (await this.repositorio.createQueryBuilder('j').where('LOWER(j.nombre) = LOWER(:nombre)', { nombre }).getOne()) {
       throw new ConflictException('Ya existe un videojuego con ese nombre');
     }
     return this.repositorio.save(this.repositorio.create({

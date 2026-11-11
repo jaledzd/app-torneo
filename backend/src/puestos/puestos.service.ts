@@ -23,6 +23,9 @@ export class PuestosService {
       if (!evento) throw new NotFoundException('No se ha encontrado la edición');
       if (actor.rol !== RolUsuario.ADMINISTRADOR && evento.anfitrionId !== actor.id) throw new ForbiddenException('No puedes configurar los puestos de esta edición');
       if (evento.estado !== EstadoEvento.BORRADOR) throw new BadRequestException('Los puestos solo se configuran durante BORRADOR');
+      const codigo = datos.codigo.trim().toUpperCase();
+      if (!codigo) throw new BadRequestException('El código del puesto no puede estar vacío');
+      if (await gestor.getRepository(PuestoEntity).findOne({ where: { eventoId, codigo } })) throw new BadRequestException('Ya existe un puesto con ese código en esta edición');
       const juegos = datos.videojuegosIds.length
         ? await gestor.getRepository(VideojuegoEntity).findBy({ id: In(datos.videojuegosIds) })
         : [];
@@ -31,7 +34,7 @@ export class PuestosService {
       }
       const puesto = gestor.getRepository(PuestoEntity).create({
         eventoId,
-        codigo: datos.codigo.trim(),
+        codigo,
         descripcion: datos.descripcion?.trim() || null,
         activo: true,
         videojuegos: juegos,

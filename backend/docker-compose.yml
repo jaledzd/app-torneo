@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: apuchitorneo-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-apuchitorneo}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-apuchitorneo}
+      POSTGRES_DB: ${DB_DATABASE:-apuchitorneo}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - apuchitorneo_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-apuchitorneo} -d ${DB_DATABASE:-apuchitorneo}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  apuchitorneo_postgres_data:

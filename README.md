@@ -136,8 +136,8 @@ La estructura se ampliará cuando se implementen nuevos módulos. Este árbol de
 - [x] DTO inicial CrearEventoDto.
 - [x] Servicio y controlador inicial de eventos.
 - [x] Pruebas unitarias y HTTP iniciales escritas (pendiente ejecutar y validar).
-- [x] Configuración inicial de PostgreSQL y TypeORM.\n- [x] Migración inicial de la tabla eventos.\n- [ ] Regenerar package-lock.json y validar build/pruebas en CI.
-- [ ] Participantes, retos, partidas, economía y sorteo.\n- [ ] Automatizar transiciones temporales de fase y proteger operaciones con autenticación.
+- [x] Configuración inicial de PostgreSQL y TypeORM.\n- [x] Migración inicial de la tabla eventos.\n- [ ] Regenerar package-lock.json y validar build/pruebas en CI.\n- [x] Migración inicial de la tabla eventos.\n- [ ] Regenerar package-lock.json y validar build/pruebas en CI.
+- [ ] Participantes, retos, partidas, economía y sorteo.\n- [ ] Automatizar transiciones de fase y añadir autenticación/autorización.\n- [ ] Automatizar transiciones temporales de fase y proteger operaciones con autenticación.
 - [ ] Autenticación y autorización.
 - [ ] Comunicación en tiempo real.
 
@@ -184,7 +184,7 @@ npm run lint
 
 ## Documentación y ruta de estudio
 
-- [Requisitos funcionales](docs/REQUISITOS-FUNCIONALES.md)\n- [API del backend](docs/API-BACKEND.md)\n- [Base de datos](docs/BASE-DE-DATOS.md)\n- [API del backend](docs/API-BACKEND.md)\n- [Base de datos](docs/BASE-DE-DATOS.md)
+- [Requisitos funcionales](docs/REQUISITOS-FUNCIONALES.md)\n- [API del backend](docs/API-BACKEND.md)\n- [Base de datos](docs/BASE-DE-DATOS.md)\n- [API del backend](docs/API-BACKEND.md)\n- [Base de datos](docs/BASE-DE-DATOS.md)\n- [API del backend](docs/API-BACKEND.md)\n- [Base de datos](docs/BASE-DE-DATOS.md)
 - [Arquitectura y decisiones técnicas](docs/ARQUITECTURA.md)
 - [Documentación específica del backend](backend/README.md)
 

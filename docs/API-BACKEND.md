@@ -74,7 +74,7 @@ Los retos caducan en cinco minutos por defecto (configurable mediante `RETO_CADU
 - `POST /eventos/:eventoId/orla/emitir`: responsable/administrador; cuerpo `{ "participanteId": "UUID", "cantidad": 3 }`.
 - `POST /eventos/:eventoId/orla/depositar`: usuario autenticado; cuerpo `{ "cantidad": 2 }`.
 - `GET /eventos/:eventoId/orla/mi-cartera`: recuento de cartera y papeletas depositadas.
-- `POST /eventos/:eventoId/orla/cerrar`: responsable/administrador cierra la recepción de papeletas. Puede hacerlo antes de finalizar el periodo adicional si ya no quedan partidas activas; si el periodo ha vencido, puede cerrar aunque queden partidas, pero el sorteo seguirá bloqueado hasta que terminen.
+- `POST /eventos/:eventoId/orla/cerrar`: responsable/administrador cierra la recepción de papeletas. Puede hacerlo antes de finalizar el periodo adicional si ya no quedan partidas activas ni papeletas pendientes en las carteras; si el periodo ha vencido, puede cerrar aunque queden partidas, pero el sorteo seguirá bloqueado hasta que terminen.
 - `POST /eventos/:eventoId/orla/sorteo`: responsable/administrador; exige orla cerrada, al menos una papeleta depositada y ninguna partida activa.
 - `GET /eventos/:eventoId/orla/sorteo`: resultado persistido.
 

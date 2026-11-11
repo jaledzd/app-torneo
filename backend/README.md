@@ -16,7 +16,7 @@ Implementado en la rama `develop`:
 - Reservas independientes de jugadores, puestos y videojuegos.
 - Finalización manual de partidas y recompensa de una ApuchiCoin al ganador.
 - Cartera de ApuchiCoins y consulta del libro de movimientos.
-- Emisión administrativa de papeletas, depósito por participantes y sorteo único.
+- Emisión administrativa de papeletas, depósito por participantes, cierre irreversible de orla y sorteo único.
 - Migraciones PostgreSQL; `synchronize` permanece desactivado.
 - Documentación funcional y técnica por módulos.
 
@@ -24,9 +24,10 @@ Implementado en la rama `develop`:
 
 - No está definido el precio ni el mecanismo de compra de papeletas; la emisión actual es administrativa y no descuenta monedas.
 - Falta el canal de notificaciones en tiempo real para Expo. El resultado del sorteo y los cambios se pueden consultar por HTTP.
-- El rol ANFITRION es global y aún no está vinculado a una edición concreta.
+- Cada edición nueva queda vinculada al anfitrión que la crea; las ediciones heredadas requieren asignación administrativa.
 - Falta definir el mecanismo de alta/promoción segura de anfitriones y administradores.
 - Swagger, rate limiting, CORS de los orígenes definitivos y paginación.
+- Un planificador de fondo para persistir automáticamente los cambios de fase por horario; las operaciones HTTP aplican las transiciones al ejecutar las reglas correspondientes.
 - Preparar el adaptador de persistencia/ejecución para AWS Lambda, RDS Proxy y Secrets Manager.
 
 ## Requisitos

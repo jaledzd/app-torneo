@@ -1,0 +1,6 @@
+export enum EstadoReto {
+  PENDIENTE = 'PENDIENTE',
+  ACEPTADO = 'ACEPTADO',
+  RECHAZADO = 'RECHAZADO',
+  CADUCADO = 'CADUCADO',
+}

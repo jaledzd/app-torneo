@@ -1,6 +1,8 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomInt } from 'node:crypto';
 import { DataSource } from 'typeorm';
+import { UsuarioAutenticado } from '../autenticacion/dominio/usuario-autenticado.interface';
+import { RolUsuario } from '../usuarios/dominio/rol-usuario.enum';
 import { EventoEntity } from '../eventos/dominio/evento.entity';
 import { EstadoEvento } from '../eventos/dominio/estado-evento.enum';
 import { EstadoPartida } from '../enfrentamientos/dominio/estado-partida.enum';
@@ -11,18 +13,22 @@ import { EstadoPapeleta } from './dominio/estado-papeleta.enum';
 import { PapeletaEntity } from './dominio/papeleta.entity';
 import { SorteoEntity } from './dominio/sorteo.entity';
 
-/** Gestiona la cartera de papeletas, su depósito y el sorteo único de cada edición. */
+/** Gestiona la cartera, el cierre de la orla y el sorteo de una edición. */
 @Injectable()
 export class OrlaService {
   constructor(private readonly fuenteDatos: DataSource) {}
 
-  async emitir(eventoId: string, participanteId: string, cantidad: number): Promise<{ emitidas: number }> {
-    if (!Number.isInteger(cantidad) || cantidad < 1 || cantidad > 500) throw new BadRequestException('La cantidad debe estar entre 1 y 500');
+  async emitir(eventoId: string, participanteId: string, cantidad: number, actor: UsuarioAutenticado): Promise<{ emitidas: number }> {
+    this.validarCantidad(cantidad, 500);
     return this.fuenteDatos.transaction(async (gestor) => {
       const evento = await gestor.getRepository(EventoEntity).findOne({ where: { id: eventoId }, lock: { mode: 'pessimistic_write' } });
-      if (!evento || ![EstadoEvento.BORRADOR, EstadoEvento.EN_CURSO, EstadoEvento.PERIODO_ADICIONAL].includes(evento.estado)) throw new BadRequestException('No se pueden emitir papeletas en esta fase');
-      const limite = evento.fechaCierreEnfrentamientos.getTime() + evento.duracionPeriodoAdicionalMinutos * 60_000;
-      if (Date.now() > limite) throw new BadRequestException('El plazo de emisión de papeletas ha terminado');
+      if (!evento) throw new NotFoundException('No se ha encontrado la edición');
+      this.autorizar(evento, actor);
+      if (evento.orlaCerradaEn || ![EstadoEvento.BORRADOR, EstadoEvento.EN_CURSO, EstadoEvento.PERIODO_ADICIONAL].includes(evento.estado)) {
+        throw new BadRequestException('No se pueden emitir papeletas en esta fase');
+      }
+      const limite = this.limiteOrla(evento);
+      if (Date.now() >= limite) throw new BadRequestException('El plazo de emisión de papeletas ha terminado');
       const participante = await gestor.getRepository(ParticipanteEntity).findOne({ where: { id: participanteId, eventoId, estado: EstadoParticipante.INSCRITO } });
       if (!participante) throw new NotFoundException('No existe un participante inscrito en esta edición');
       const repo = gestor.getRepository(PapeletaEntity);
@@ -33,12 +39,13 @@ export class OrlaService {
   }
 
   async depositar(eventoId: string, usuarioId: string, cantidad: number): Promise<{ depositadas: number; enCartera: number }> {
-    if (!Number.isInteger(cantidad) || cantidad < 1) throw new BadRequestException('La cantidad debe ser un entero positivo');
+    this.validarCantidad(cantidad);
     return this.fuenteDatos.transaction(async (gestor) => {
       const evento = await gestor.getRepository(EventoEntity).findOne({ where: { id: eventoId }, lock: { mode: 'pessimistic_write' } });
-      if (!evento || ![EstadoEvento.EN_CURSO, EstadoEvento.PERIODO_ADICIONAL].includes(evento.estado)) throw new BadRequestException('La orla no está abierta');
-      const limite = evento.fechaCierreEnfrentamientos.getTime() + evento.duracionPeriodoAdicionalMinutos * 60_000;
-      if (Date.now() > limite) throw new BadRequestException('El plazo de la orla ha terminado');
+      if (!evento || evento.orlaCerradaEn || ![EstadoEvento.EN_CURSO, EstadoEvento.PERIODO_ADICIONAL].includes(evento.estado)) {
+        throw new BadRequestException('La orla no está abierta');
+      }
+      if (Date.now() >= this.limiteOrla(evento)) throw new BadRequestException('El plazo de la orla ha terminado');
       const participante = await gestor.getRepository(ParticipanteEntity).findOne({ where: { eventoId, usuarioId, estado: EstadoParticipante.INSCRITO } });
       if (!participante) throw new NotFoundException('No estás inscrito en esta edición');
       const repo = gestor.getRepository(PapeletaEntity);
@@ -67,18 +74,38 @@ export class OrlaService {
     };
   }
 
-  async realizarSorteo(eventoId: string): Promise<SorteoEntity> {
+  async cerrarOrla(eventoId: string, actor: UsuarioAutenticado): Promise<EventoEntity> {
     return this.fuenteDatos.transaction(async (gestor) => {
       const eventos = gestor.getRepository(EventoEntity);
       const evento = await eventos.findOne({ where: { id: eventoId }, lock: { mode: 'pessimistic_write' } });
       if (!evento) throw new NotFoundException('No se ha encontrado la edición');
+      this.autorizar(evento, actor);
+      if (evento.orlaCerradaEn) throw new ConflictException('La orla ya está cerrada');
+      if (![EstadoEvento.EN_CURSO, EstadoEvento.PERIODO_ADICIONAL].includes(evento.estado)) throw new BadRequestException('La orla solo se puede cerrar durante el torneo o el periodo adicional');
+      const limite = this.limiteOrla(evento);
+      const partidasActivas = await gestor.getRepository(PartidaEntity).count({ where: { eventoId, estado: EstadoPartida.EN_CURSO } });
+      if (Date.now() < limite && partidasActivas > 0) throw new ConflictException('No se puede cerrar antes de tiempo mientras haya partidas en curso');
+      if (Date.now() < evento.fechaCierreEnfrentamientos.getTime()) throw new BadRequestException('El torneo todavía no ha llegado al cierre de enfrentamientos');
+      evento.estado = EstadoEvento.PERIODO_ADICIONAL;
+      evento.orlaCerradaEn = new Date();
+      return eventos.save(evento);
+    });
+  }
+
+  async realizarSorteo(eventoId: string, actor: UsuarioAutenticado): Promise<SorteoEntity> {
+    return this.fuenteDatos.transaction(async (gestor) => {
+      const eventos = gestor.getRepository(EventoEntity);
+      const evento = await eventos.findOne({ where: { id: eventoId }, lock: { mode: 'pessimistic_write' } });
+      if (!evento) throw new NotFoundException('No se ha encontrado la edición');
+      this.autorizar(evento, actor);
       if (evento.estado === EstadoEvento.EN_CURSO && Date.now() >= evento.fechaCierreEnfrentamientos.getTime()) {
         evento.estado = EstadoEvento.PERIODO_ADICIONAL;
-        await eventos.save(evento);
       }
-      if (evento.estado !== EstadoEvento.PERIODO_ADICIONAL) throw new BadRequestException('El sorteo solo puede realizarse durante el periodo adicional');
-      const existente = await gestor.getRepository(SorteoEntity).findOne({ where: { eventoId } });
-      if (existente) throw new ConflictException('Esta edición ya tiene un sorteo realizado');
+      if (evento.estado !== EstadoEvento.PERIODO_ADICIONAL || !evento.orlaCerradaEn) {
+        throw new BadRequestException('Primero debe cerrarse la orla');
+      }
+      const sorteos = gestor.getRepository(SorteoEntity);
+      if (await sorteos.findOne({ where: { eventoId } })) throw new ConflictException('Esta edición ya tiene un sorteo realizado');
       const partidasActivas = await gestor.getRepository(PartidaEntity).count({ where: { eventoId, estado: EstadoPartida.EN_CURSO } });
       if (partidasActivas > 0) throw new ConflictException('No se puede sortear mientras queden partidas en curso');
       const repo = gestor.getRepository(PapeletaEntity);
@@ -87,7 +114,6 @@ export class OrlaService {
       const ganadora = papeletas[randomInt(papeletas.length)];
       ganadora.estado = EstadoPapeleta.GANADORA;
       await repo.save(ganadora);
-      const sorteos = gestor.getRepository(SorteoEntity);
       const sorteo = await sorteos.save(sorteos.create({ eventoId, papeletaGanadoraId: ganadora.id, participanteGanadorId: ganadora.participanteId }));
       evento.estado = EstadoEvento.FINALIZADO;
       await eventos.save(evento);
@@ -99,5 +125,19 @@ export class OrlaService {
     const sorteo = await this.fuenteDatos.getRepository(SorteoEntity).findOne({ where: { eventoId } });
     if (!sorteo) throw new NotFoundException('Todavía no se ha realizado el sorteo');
     return sorteo;
+  }
+
+  private autorizar(evento: EventoEntity, actor: UsuarioAutenticado): void {
+    if (actor.rol !== RolUsuario.ADMINISTRADOR && evento.anfitrionId !== actor.id) {
+      throw new ForbiddenException('Solo el anfitrión responsable o un administrador puede gestionar esta edición');
+    }
+  }
+
+  private limiteOrla(evento: EventoEntity): number {
+    return evento.fechaCierreEnfrentamientos.getTime() + evento.duracionPeriodoAdicionalMinutos * 60_000;
+  }
+
+  private validarCantidad(cantidad: number, maximo = 100): void {
+    if (!Number.isInteger(cantidad) || cantidad < 1 || cantidad > maximo) throw new BadRequestException(`La cantidad debe estar entre 1 y ${maximo}`);
   }
 }

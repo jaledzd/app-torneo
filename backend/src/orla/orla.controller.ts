@@ -13,8 +13,8 @@ export class OrlaController {
 
   @Roles(RolUsuario.ANFITRION, RolUsuario.ADMINISTRADOR)
   @Post('emitir')
-  emitir(@Param('eventoId', new ParseUUIDPipe()) eventoId: string, @Body() datos: CrearPapeletasDto) {
-    return this.servicio.emitir(eventoId, datos.participanteId, datos.cantidad);
+  emitir(@Param('eventoId', new ParseUUIDPipe()) eventoId: string, @Body() datos: CrearPapeletasDto, @Req() req: Request & { user: UsuarioAutenticado }) {
+    return this.servicio.emitir(eventoId, datos.participanteId, datos.cantidad, req.user);
   }
 
   @Post('depositar')
@@ -28,9 +28,15 @@ export class OrlaController {
   }
 
   @Roles(RolUsuario.ANFITRION, RolUsuario.ADMINISTRADOR)
+  @Post('cerrar')
+  cerrar(@Param('eventoId', new ParseUUIDPipe()) eventoId: string, @Req() req: Request & { user: UsuarioAutenticado }) {
+    return this.servicio.cerrarOrla(eventoId, req.user);
+  }
+
+  @Roles(RolUsuario.ANFITRION, RolUsuario.ADMINISTRADOR)
   @Post('sorteo')
-  sortear(@Param('eventoId', new ParseUUIDPipe()) eventoId: string) {
-    return this.servicio.realizarSorteo(eventoId);
+  sortear(@Param('eventoId', new ParseUUIDPipe()) eventoId: string, @Req() req: Request & { user: UsuarioAutenticado }) {
+    return this.servicio.realizarSorteo(eventoId, req.user);
   }
 
   @Get('sorteo')

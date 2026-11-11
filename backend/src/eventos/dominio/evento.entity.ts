@@ -8,12 +8,12 @@ export class EventoEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'uuid', name: 'anfitrion_id' })
-  anfitrionId: string;
+  @Column({ type: 'uuid', name: 'anfitrion_id', nullable: true })
+  anfitrionId: string | null;
 
-  @ManyToOne(() => UsuarioEntity, { onDelete: 'RESTRICT' })
+  @ManyToOne(() => UsuarioEntity, { onDelete: 'RESTRICT', nullable: true })
   @JoinColumn({ name: 'anfitrion_id' })
-  anfitrion: UsuarioEntity;
+  anfitrion: UsuarioEntity | null;
 
   @Column({ type: 'timestamptz', name: 'fecha_inicio' })
   fechaInicio: Date;
@@ -29,6 +29,9 @@ export class EventoEntity {
 
   @Column({ type: 'enum', enum: EstadoEvento, enumName: 'eventos_estado_enum', default: EstadoEvento.BORRADOR })
   estado: EstadoEvento;
+
+  @Column({ type: 'timestamptz', name: 'orla_cerrada_en', nullable: true })
+  orlaCerradaEn: Date | null;
 
   @CreateDateColumn({ type: 'timestamptz', name: 'creado_en' })
   creadoEn: Date;

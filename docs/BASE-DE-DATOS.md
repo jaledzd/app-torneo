@@ -1,35 +1,35 @@
-# Base de datos
+# Base de datos de APUCHITORNEO
 
 ## Motor y estrategia
 
-La base de datos principal es PostgreSQL. TypeORM se utiliza como ORM para mapear entidades y ejecutar consultas.
+PostgreSQL es la base de datos principal. TypeORM mapea las entidades y ejecuta consultas.
 
-El esquema se controla mediante migraciones versionadas. La opción `synchronize` permanece desactivada para evitar que el servidor altere el esquema automáticamente al arrancar.
+El esquema se controla mediante migraciones versionadas. `synchronize` permanece desactivado para impedir que el servidor altere automáticamente las tablas al arrancar.
 
-## Primera entidad: eventos
+## Primera tabla: eventos
 
 | Columna | Tipo PostgreSQL | Descripción |
 |---|---|---|
-| id | uuid | Identificador de la edición. |
+| id | uuid | Identificador de edición. |
 | fecha_inicio | timestamptz | Inicio configurado. |
-| fecha_cierre_enfrentamientos | timestamptz | Momento a partir del cual no se inician retos. |
+| fecha_cierre_enfrentamientos | timestamptz | Cierre de nuevos enfrentamientos. |
 | duracion_periodo_adicional_minutos | integer | Duración de la fase adicional. |
 | premio | varchar(250) | Descripción del premio. |
-| estado | enum | Fase actual de la edición. |
-| creado_en | timestamptz | Fecha de creación automática. |
+| estado | enum | Fase de la edición. |
+| creado_en | timestamptz | Creación automática. |
 | actualizado_en | timestamptz | Última modificación automática. |
 
-Restricciones:
-- El cierre de enfrentamientos debe ser posterior al inicio.
-- La duración adicional debe ser positiva.
-- El estado solo puede tomar los valores del enum definido.
-- El identificador es único.
+Restricciones de base de datos:
+- Cierre posterior al inicio.
+- Duración adicional positiva.
+- Estado dentro de los valores permitidos.
+- Identificador único.
 
 ## Migraciones
 
-La primera migración crea el tipo enum, la tabla y un índice por estado.
+La migración inicial crea el tipo enum, la tabla y un índice por estado.
 
-Comandos desde `backend/`:
+Desde `backend/`:
 
 ~~~bash
 npm run migration:show
@@ -37,10 +37,10 @@ npm run migration:run
 npm run migration:revert
 ~~~
 
-Antes de ejecutar una migración en un entorno compartido, se debe revisar su contenido y disponer de una copia de seguridad apropiada.
+Revisa una migración antes de aplicarla en un entorno compartido y prepara una copia de seguridad apropiada.
 
 ## Próximas entidades
 
-El modelo se ampliará después de definir claves y cardinalidades para participantes, ediciones, puestos, videojuegos, retos, partidas, movimientos de monedas, papeletas, orla y sorteos.
+El modelo se ampliará después de definir claves y cardinalidades para usuarios, participantes, ediciones, puestos, videojuegos, retos, partidas, movimientos de monedas, papeletas, orla y sorteos.
 
-Las operaciones económicas y las reservas de recursos necesitarán transacciones y restricciones para soportar peticiones concurrentes. No se debe implementar esa parte como simples lecturas y escrituras independientes.
+Las reservas de recursos y operaciones económicas requerirán transacciones y restricciones para soportar peticiones simultáneas. No deben implementarse como lecturas y escrituras independientes.

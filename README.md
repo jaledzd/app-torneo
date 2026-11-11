@@ -2,7 +2,7 @@
 
 Aplicación móvil y backend para gestionar un torneo presencial de videojuegos: ediciones, participantes, retos, partidas, puestos de juego, ApuchiCoins, papeletas, orla y sorteo final.
 
-> **Estado actual:** desarrollo inicial. El backend NestJS está inicializado y contiene el módulo de salud y los primeros contratos del módulo de eventos. PostgreSQL, la aplicación Expo y el despliegue AWS están planificados, pero todavía no deben considerarse implementados.
+> **Estado actual:** backend en construcción. Ya se ha incorporado la configuración inicial de PostgreSQL/TypeORM, la entidad y migración de eventos, endpoints básicos de gestión de ediciones y pruebas iniciales. La ejecución de build y pruebas queda pendiente de validarse en CI. Expo y el despliegue AWS siguen pendientes.
 
 ## Índice
 
@@ -71,8 +71,8 @@ El sorteo puede ejecutarse antes de que venza el periodo adicional si el anfitri
 |---|---|---|
 | Backend | Node.js, TypeScript y NestJS | Inicializado |
 | API | API REST | En desarrollo |
-| Base de datos | PostgreSQL | Planificada |
-| ORM | TypeORM | Planificado |
+| Base de datos | PostgreSQL | Configuración inicial añadida; falta validar conexión y migraciones |
+| ORM | TypeORM | Configuración inicial añadida |
 | Aplicación móvil | Expo / React Native | Pendiente |
 | Tiempo real | WebSocket o mecanismo equivalente | Pendiente de diseño |
 | Infraestructura | AWS Serverless | Fase posterior |
@@ -134,9 +134,9 @@ La estructura se ampliará cuando se implementen nuevos módulos. Este árbol de
 - [x] Enum inicial de estados del evento.
 - [x] Interfaz inicial Evento.
 - [x] DTO inicial CrearEventoDto.
-- [ ] Servicio y controlador de eventos.
+- [x] Servicio y controlador inicial de eventos.
 - [ ] Pruebas unitarias y end-to-end de eventos.
-- [ ] PostgreSQL y TypeORM.
+- [x] Configuración inicial de PostgreSQL y TypeORM.
 - [ ] Participantes, retos, partidas, economía y sorteo.
 - [ ] Autenticación y autorización.
 - [ ] Comunicación en tiempo real.
@@ -184,7 +184,7 @@ npm run lint
 
 ## Documentación y ruta de estudio
 
-- [Requisitos funcionales](docs/REQUISITOS-FUNCIONALES.md)
+- [Requisitos funcionales](docs/REQUISITOS-FUNCIONALES.md)\n- [API del backend](docs/API-BACKEND.md)\n- [Base de datos](docs/BASE-DE-DATOS.md)
 - [Arquitectura y decisiones técnicas](docs/ARQUITECTURA.md)
 - [Documentación específica del backend](backend/README.md)
 

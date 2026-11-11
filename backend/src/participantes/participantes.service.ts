@@ -16,7 +16,6 @@ export class ParticipantesService {
     private readonly fuenteDatos: DataSource,
     @InjectRepository(ParticipanteEntity) private readonly participantes: Repository<ParticipanteEntity>,
     @InjectRepository(EventoEntity) private readonly eventos: Repository<EventoEntity>,
-    @InjectRepository(UsuarioEntity) private readonly usuarios: Repository<UsuarioEntity>,
   ) {}
 
   async inscribir(eventoId: string, usuarioId: string): Promise<ParticipanteEntity> {

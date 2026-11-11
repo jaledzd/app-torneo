@@ -77,21 +77,6 @@ export class EventosService {
     });
   }
 
-  /** Puede llamarse desde cualquier operación del evento para reconciliar el reloj con su fase persistida. */
-  async actualizarFasePorTiempo(id: string): Promise<EventoEntity> {
-    return this.fuenteDatos.transaction(async (gestor) => {
-      const repo = gestor.getRepository(EventoEntity);
-      const evento = await repo.findOne({ where: { id }, lock: { mode: 'pessimistic_write' } });
-      if (!evento) throw new NotFoundException('No se ha encontrado la edición');
-      const ahora = Date.now();
-      if (evento.estado === EstadoEvento.EN_CURSO && ahora >= evento.fechaCierreEnfrentamientos.getTime()) {
-        evento.estado = EstadoEvento.PERIODO_ADICIONAL;
-        await repo.save(evento);
-      }
-      return evento;
-    });
-  }
-
   private async transicionar(
     id: string,
     actor: UsuarioAutenticado,

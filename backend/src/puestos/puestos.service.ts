@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, Repository } from 'typeorm';
 import { UsuarioAutenticado } from '../autenticacion/dominio/usuario-autenticado.interface';
@@ -25,7 +25,7 @@ export class PuestosService {
       if (evento.estado !== EstadoEvento.BORRADOR) throw new BadRequestException('Los puestos solo se configuran durante BORRADOR');
       const codigo = datos.codigo.trim().toUpperCase();
       if (!codigo) throw new BadRequestException('El código del puesto no puede estar vacío');
-      if (await gestor.getRepository(PuestoEntity).findOne({ where: { eventoId, codigo } })) throw new BadRequestException('Ya existe un puesto con ese código en esta edición');
+      if (await gestor.getRepository(PuestoEntity).findOne({ where: { eventoId, codigo } })) throw new ConflictException('Ya existe un puesto con ese código en esta edición');
       const juegos = datos.videojuegosIds.length
         ? await gestor.getRepository(VideojuegoEntity).findBy({ id: In(datos.videojuegosIds) })
         : [];

@@ -11,6 +11,7 @@ import { EstadoPartida } from './dominio/estado-partida.enum';
 import { PartidaEntity } from './dominio/partida.entity';
 import { EstadoReto } from './dominio/estado-reto.enum';
 import { RetoEntity } from './dominio/reto.entity';
+import { ApuchiCoinsService } from '../apuchicoins/apuchicoins.service';
 
 /** Coordina retos y reserva atómica de recursos físicos y lógicos. */
 @Injectable()
@@ -19,6 +20,7 @@ export class EnfrentamientosService {
     private readonly fuenteDatos: DataSource,
     @InjectRepository(RetoEntity) private readonly retos: Repository<RetoEntity>,
     @InjectRepository(PartidaEntity) private readonly partidas: Repository<PartidaEntity>,
+    private readonly apuchiCoins: ApuchiCoinsService,
   ) {}
 
   async enviarReto(eventoId: string, emisorUsuarioId: string, destinatarioParticipanteId: string): Promise<RetoEntity> {
@@ -97,7 +99,9 @@ export class EnfrentamientosService {
       partida.estado = EstadoPartida.FINALIZADA;
       partida.ganadorId = ganadorId;
       partida.finalizadaEn = new Date();
-      return repo.save(partida);
+      const guardada = await repo.save(partida);
+      await this.apuchiCoins.acreditarVictoria(gestor, eventoId, ganadorId, partida.id);
+      return guardada;
     });
   }
 

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ApuchiCoinsModule } from '../apuchicoins/apuchicoins.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { EventoEntity } from '../eventos/dominio/evento.entity';
 import { ParticipanteEntity } from '../participantes/dominio/participante.entity';
@@ -9,7 +10,7 @@ import { RetoEntity } from './dominio/reto.entity';
 import { EnfrentamientosController } from './enfrentamientos.controller';
 import { EnfrentamientosService } from './enfrentamientos.service';
 @Module({
-  imports: [TypeOrmModule.forFeature([EventoEntity, ParticipanteEntity, PuestoEntity, VideojuegoEntity, PartidaEntity, RetoEntity])],
+  imports: [ApuchiCoinsModule, TypeOrmModule.forFeature([EventoEntity, ParticipanteEntity, PuestoEntity, VideojuegoEntity, PartidaEntity, RetoEntity])],
   controllers: [EnfrentamientosController],
   providers: [EnfrentamientosService],
   exports: [EnfrentamientosService],

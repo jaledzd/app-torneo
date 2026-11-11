@@ -19,14 +19,10 @@ export class ParticipantesService {
 
   async inscribir(eventoId: string, usuarioId: string): Promise<ParticipanteEntity> {
     return this.fuenteDatos.transaction(async (gestor) => {
-      const evento = await gestor.getRepository(EventoEntity).findOne({
-        where: { id: eventoId },
-        lock: { mode: 'pessimistic_write' },
-      });
+      const evento = await gestor.getRepository(EventoEntity).findOne({ where: { id: eventoId }, lock: { mode: 'pessimistic_write' } });
       if (!evento) throw new NotFoundException('No se ha encontrado la edición');
-      if (evento.estado !== EstadoEvento.BORRADOR && evento.estado !== EstadoEvento.EN_CURSO) {
-        throw new BadRequestException('La edición no admite nuevas inscripciones');
-      }
+      if (evento.estado !== EstadoEvento.BORRADOR && evento.estado !== EstadoEvento.EN_CURSO) throw new BadRequestException('La edición no admite nuevas inscripciones');
+      if (evento.estado === EstadoEvento.EN_CURSO && Date.now() >= evento.fechaCierreEnfrentamientos.getTime()) throw new BadRequestException('Ha terminado el plazo de inscripción');
       const usuario = await gestor.getRepository(UsuarioEntity).findOne({ where: { id: usuarioId, activo: true } });
       if (!usuario) throw new NotFoundException('No se ha encontrado una cuenta activa con ese identificador');
       const repo = gestor.getRepository(ParticipanteEntity);
@@ -54,6 +50,8 @@ export class ParticipantesService {
     const participante = await this.participantes.findOne({ where: { id: participanteId, eventoId } });
     if (!participante) throw new NotFoundException('No se ha encontrado la inscripción');
     if (participante.estado !== EstadoParticipante.INSCRITO) throw new BadRequestException('La inscripción ya está retirada');
+    const partidaActiva = await this.fuenteDatos.query('SELECT 1 FROM "partidas_jugadores_activos" WHERE "participante_id" = $1 LIMIT 1', [participanteId]);
+    if (partidaActiva.length) throw new ConflictException('No puedes retirar a un participante que tiene una partida en curso');
     participante.estado = EstadoParticipante.RETIRADO;
     return this.participantes.save(participante);
   }

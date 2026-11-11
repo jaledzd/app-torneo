@@ -2,88 +2,84 @@
 
 Base URL local: `http://localhost:3000`.
 
-Las rutas de escritura todavía no tienen autenticación ni autorización de anfitrión. No expongas el backend a Internet como API de producción hasta implementar esos controles.
+Todas las rutas requieren JWT Bearer salvo las marcadas explícitamente como públicas. El registro y el inicio de sesión son públicos. Las operaciones de anfitrión y administrador comprueban el rol global del usuario.
 
 ## Convenciones
 
 - Fechas ISO 8601 con zona horaria.
-- UUID para identificar ediciones.
-- Excepciones HTTP estándar de NestJS.
+- UUID para identificar ediciones y recursos.
 - Los DTO rechazan propiedades desconocidas mediante el ValidationPipe global.
+- Los errores de reglas de negocio usan códigos HTTP estándar de NestJS.
 
-## Salud
+## Salud y cuentas
 
-### GET /salud
-
-Comprueba que el proceso HTTP responde.
-
-~~~json
-{
-  "estado": "ok",
-  "mensaje": "La API está funcionando correctamente",
-  "entorno": "development"
-}
-~~~
+- `GET /salud`: estado del servicio (público).
+- `POST /usuarios/registro`: registro público; siempre crea rol PARTICIPANTE.
+- `POST /autenticacion/iniciar-sesion`: devuelve token Bearer.
+- `GET /usuarios` y `GET /usuarios/:id`: solo ADMINISTRADOR.
 
 ## Ediciones
 
-### POST /eventos
+- `POST /eventos`: anfitrión/administrador; crea BORRADOR.
+- `GET /eventos` y `GET /eventos/:id`: consulta.
+- `PATCH /eventos/:id`: anfitrión/administrador; solo BORRADOR.
+- `POST /eventos/:id/iniciar`: inicia cuando llega la fecha configurada.
+- `POST /eventos/:id/cerrar-enfrentamientos`: anfitrión/administrador; pasa a PERIODO_ADICIONAL cuando se alcanza el cierre.
 
-Crea una edición en estado BORRADOR.
+Ejemplo de creación:
 
-~~~json
+```json
 {
   "fechaInicio": "2030-06-10T10:00:00.000Z",
   "fechaCierreEnfrentamientos": "2030-06-10T18:00:00.000Z",
   "duracionPeriodoAdicionalMinutos": 30,
   "premio": "Premio del torneo"
 }
-~~~
+```
 
-Reglas: fechas ISO válidas, cierre posterior al inicio, duración entera positiva y premio de texto no vacío (máximo 250 caracteres). El identificador y estado inicial los genera el servidor.
+## Participantes
 
-### GET /eventos
+- `POST /eventos/:eventoId/participantes/inscribirme`: inscripción de la cuenta autenticada.
+- `POST /eventos/:eventoId/participantes`: anfitrión/administrador inscribe una cuenta indicando `usuarioId`.
+- `GET /eventos/:eventoId/participantes`: anfitrión/administrador consulta inscritos.
+- `DELETE /eventos/:eventoId/participantes/:participanteId`: anfitrión/administrador retira una inscripción. No se puede retirar a alguien con partida activa.
 
-Lista ediciones de más reciente a más antigua.
+## Catálogo y puestos
 
-### GET /eventos/:id
+- `POST /videojuegos`: crear videojuego (anfitrión/administrador).
+- `GET /videojuegos`: catálogo activo.
+- `POST /eventos/:eventoId/puestos`: crear puesto y definir compatibilidades (anfitrión/administrador).
+- `GET /eventos/:eventoId/puestos`: consultar puestos activos.
 
-Consulta una edición por UUID.
+## Retos y partidas
 
-### PATCH /eventos/:id
+- `POST /eventos/:eventoId/retos`: enviar reto indicando `destinatarioId` (id de participante).
+- `GET /eventos/:eventoId/retos/recibidos`: retos pendientes del usuario autenticado.
+- `POST /eventos/:eventoId/retos/:retoId/aceptar`: aceptar indicando `puestoId` y `videojuegoId`.
+- `GET /eventos/:eventoId/partidas`: consultar partidas.
+- `POST /eventos/:eventoId/partidas/:partidaId/finalizar`: anfitrión/administrador registra `ganadorId`.
 
-Modifica parcialmente la configuración, únicamente mientras la edición siga en BORRADOR.
+Los retos caducan en cinco minutos por defecto (configurable mediante `RETO_CADUCIDAD_MINUTOS`). El cierre horario impide nuevos retos y aceptaciones. Las partidas activas pueden terminar después. Puestos, videojuegos y participantes se reservan dentro de transacciones.
 
-~~~json
-{
-  "premio": "Premio actualizado",
-  "duracionPeriodoAdicionalMinutos": 45
-}
-~~~
+## ApuchiCoins
 
-### POST /eventos/:id/iniciar
+- `GET /eventos/:eventoId/apuchicoins/mi-saldo`: saldo del usuario autenticado.
+- `GET /eventos/:eventoId/apuchicoins/mis-movimientos`: libro de movimientos del usuario.
+- Al finalizar una partida se acredita una moneda al ganador en la misma transacción.
 
-Cambia BORRADOR a EN_CURSO cuando la fecha de inicio configurada ya ha llegado. No se permite iniciar anticipadamente.
+## Orla y sorteo
 
-### POST /eventos/:id/cerrar-enfrentamientos
+- `POST /eventos/:eventoId/orla/emitir`: anfitrión/administrador; cuerpo `{ "participanteId": "UUID", "cantidad": 3 }`.
+- `POST /eventos/:eventoId/orla/depositar`: usuario autenticado; cuerpo `{ "cantidad": 2 }`.
+- `GET /eventos/:eventoId/orla/mi-cartera`: recuento de cartera y papeletas depositadas.
+- `POST /eventos/:eventoId/orla/sorteo`: anfitrión/administrador; requiere periodo adicional, al menos una papeleta depositada y ninguna partida activa.
+- `GET /eventos/:eventoId/orla/sorteo`: resultado persistido.
 
-Cambia EN_CURSO a PERIODO_ADICIONAL cuando se alcanza la fecha de cierre. Las partidas que ya estén activas podrán terminar; la gestión de esas partidas se implementará en el módulo correspondiente.
+La duración de la orla se calcula desde la hora configurada de cierre más los minutos de periodo adicional. El sorteo puede hacerse antes de vencer ese periodo si todas las partidas han terminado.
 
-## Respuestas HTTP
+## Limitaciones conocidas
 
-| Código | Significado |
-|---|---|
-| 200 | Consulta o modificación correcta. |
-| 201 | Recurso creado. |
-| 400 | DTO inválido o regla de negocio incumplida. |
-| 404 | Edición inexistente. |
-| 500 | Error interno no esperado. |
-
-## Pendiente
-
-- Autenticación y autorización de anfitrión.
-- DTO explícitos de respuesta.
-- Paginación y filtros.
-- OpenAPI/Swagger.
-- Limitación de peticiones, CORS y cabeceras de seguridad.
-- Pruebas de integración con PostgreSQL real.
+- No se ha definido precio, compra ni conversión de ApuchiCoins en papeletas; la emisión es administrativa y no descuenta saldo.
+- El resultado del sorteo se consulta por HTTP; falta implementar la notificación en tiempo real para Expo.
+- El rol ANFITRION es global, no está vinculado todavía a una edición concreta.
+- No hay todavía paginación, Swagger, rate limiting ni CORS configurado para los orígenes definitivos.

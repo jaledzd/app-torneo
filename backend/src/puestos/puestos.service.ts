@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { EventoEntity } from '../eventos/dominio/evento.entity';
 import { EstadoEvento } from '../eventos/dominio/estado-evento.enum';
 import { VideojuegoEntity } from '../videojuegos/dominio/videojuego.entity';
@@ -21,7 +21,7 @@ export class PuestosService {
       if (!evento) throw new NotFoundException('No se ha encontrado la edición');
       if (evento.estado !== EstadoEvento.BORRADOR) throw new BadRequestException('Los puestos solo se configuran durante BORRADOR');
       const juegos = datos.videojuegosIds.length
-        ? await gestor.getRepository(VideojuegoEntity).findByIds(datos.videojuegosIds)
+        ? await gestor.getRepository(VideojuegoEntity).findBy({ id: In(datos.videojuegosIds) })
         : [];
       if (juegos.length !== new Set(datos.videojuegosIds).size || juegos.some((juego) => !juego.activo)) {
         throw new BadRequestException('La lista contiene videojuegos inexistentes, inactivos o repetidos');

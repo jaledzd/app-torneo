@@ -1,7 +1,7 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 /** Resultado inmutable del sorteo de una edición. */
 @Entity({ name: 'sorteos' })
-@Index('UQ_sorteo_evento', ['eventoId'], { unique: true })
+@Index('UQ_sorteos_evento', ['eventoId'], { unique: true })
 export class SorteoEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
   @Column({ type: 'uuid', name: 'evento_id' }) eventoId: string;

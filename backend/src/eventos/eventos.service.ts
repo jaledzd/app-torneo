@@ -89,6 +89,9 @@ export class EventosService {
     if (Date.now() < evento.fechaInicio.getTime()) {
       throw new BadRequestException('Todavía no ha llegado la fecha de inicio configurada');
     }
+    if (Date.now() >= evento.fechaCierreEnfrentamientos.getTime()) {
+      throw new BadRequestException('La hora de cierre de enfrentamientos ya ha pasado; no se puede iniciar la edición');
+    }
 
     const resultado = await this.eventosRepository.update(
       { id, estado: EstadoEvento.BORRADOR },

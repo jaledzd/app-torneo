@@ -5,6 +5,7 @@ import { AppService } from './app.service';
 import { SaludModule } from './salud/salud.module';
 import { EventosModule } from './eventos/eventos.module';
 import { UsuariosModule } from './usuarios/usuarios.module';
+import { ParticipantesModule } from './participantes/participantes.module';
 import { DatabaseModule } from './database/database.module';
 
 /** Módulo raíz de la API. */
@@ -15,6 +16,7 @@ import { DatabaseModule } from './database/database.module';
     SaludModule,
     EventosModule,
     UsuariosModule,
+    ParticipantesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

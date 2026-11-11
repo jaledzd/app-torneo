@@ -1,0 +1,44 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
+  pull_request:
+    branches: [develop]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.22.3'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      # npm install actualiza el lockfile en el entorno de CI mientras
+      # se termina de sincronizar el lockfile versionado del repositorio.
+      - name: Instalar dependencias
+        run: npm install --no-audit --no-fund
+
+      - name: Compilar backend
+        run: npm run build
+
+      - name: Pruebas unitarias
+        run: npm test -- --runInBand
+
+      - name: Pruebas HTTP end-to-end
+        run: npm run test:e2e -- --runInBand

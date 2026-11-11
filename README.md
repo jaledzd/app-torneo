@@ -184,6 +184,10 @@ npm run lint
 
 ## Documentación y ruta de estudio
 
+- [Requisitos funcionales](docs/REQUISITOS-FUNCIONALES.md)
+- [Arquitectura y decisiones técnicas](docs/ARQUITECTURA.md)
+- [Documentación específica del backend](backend/README.md)
+
 La documentación ampliada se organizará en docs/ y se actualizará junto con el código:
 
 | Documento | Contenido |

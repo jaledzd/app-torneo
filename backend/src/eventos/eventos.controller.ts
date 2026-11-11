@@ -1,50 +1,26 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
+import { Roles } from '../autenticacion/decoradores/roles.decorator';
+import { RolUsuario } from '../usuarios/dominio/rol-usuario.enum';
 import { EventosService } from './eventos.service';
 import { CrearEventoDto } from './dto/crear-evento.dto';
 import { ActualizarEventoDto } from './dto/actualizar-evento.dto';
-
-/**
- * API HTTP de ediciones.
- * Las rutas de escritura deberán protegerse con rol de anfitrión cuando
- * se integre el módulo de autenticación.
- */
 @Controller('eventos')
 export class EventosController {
   constructor(private readonly eventosService: EventosService) {}
-
-  /** Crea una edición nueva en BORRADOR. */
+  @Roles(RolUsuario.ANFITRION, RolUsuario.ADMINISTRADOR)
   @Post()
-  crear(@Body() dto: CrearEventoDto) {
-    return this.eventosService.crear(dto);
-  }
-
-  /** Lista las ediciones existentes. */
+  crear(@Body() dto: CrearEventoDto) { return this.eventosService.crear(dto); }
   @Get()
-  listar() {
-    return this.eventosService.listar();
-  }
-
-  /** Consulta una edición por UUID. */
+  listar() { return this.eventosService.listar(); }
   @Get(':id')
-  obtenerPorId(@Param('id', new ParseUUIDPipe()) id: string) {
-    return this.eventosService.obtenerPorId(id);
-  }
-
-  /** Modifica una edición que todavía esté en BORRADOR. */
+  obtenerPorId(@Param('id', new ParseUUIDPipe()) id: string) { return this.eventosService.obtenerPorId(id); }
+  @Roles(RolUsuario.ANFITRION, RolUsuario.ADMINISTRADOR)
   @Patch(':id')
-  actualizar(@Param('id', new ParseUUIDPipe()) id: string, @Body() dto: ActualizarEventoDto) {
-    return this.eventosService.actualizar(id, dto);
-  }
-
-  /** Inicia la edición cuando llega su fecha de inicio configurada. */
+  actualizar(@Param('id', new ParseUUIDPipe()) id: string, @Body() dto: ActualizarEventoDto) { return this.eventosService.actualizar(id, dto); }
+  @Roles(RolUsuario.ANFITRION, RolUsuario.ADMINISTRADOR)
   @Post(':id/iniciar')
-  iniciar(@Param('id', new ParseUUIDPipe()) id: string) {
-    return this.eventosService.iniciar(id);
-  }
-
-  /** Cierra nuevos enfrentamientos y abre el periodo adicional. */
+  iniciar(@Param('id', new ParseUUIDPipe()) id: string) { return this.eventosService.iniciar(id); }
+  @Roles(RolUsuario.ANFITRION, RolUsuario.ADMINISTRADOR)
   @Post(':id/cerrar-enfrentamientos')
-  cerrarEnfrentamientos(@Param('id', new ParseUUIDPipe()) id: string) {
-    return this.eventosService.cerrarEnfrentamientos(id);
-  }
+  cerrarEnfrentamientos(@Param('id', new ParseUUIDPipe()) id: string) { return this.eventosService.cerrarEnfrentamientos(id); }
 }

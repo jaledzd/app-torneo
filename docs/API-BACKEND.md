@@ -23,6 +23,7 @@ Todas las rutas requieren JWT Bearer salvo las marcadas expresamente como públi
 
 - `POST /eventos`: anfitrión/administrador; crea BORRADOR y asigna como responsable al usuario autenticado.
 - `GET /eventos` y `GET /eventos/:id`: consulta de ediciones.
+- `PATCH /eventos/:id/anfitrion`: solo ADMINISTRADOR; asigna o reasigna el responsable indicando `anfitrionId` de una cuenta activa con rol ANFITRION.
 - `PATCH /eventos/:id`: responsable/administrador; solo BORRADOR.
 - `POST /eventos/:id/iniciar`: responsable/administrador; inicia cuando llega la fecha configurada.
 - `POST /eventos/:id/cerrar-enfrentamientos`: responsable/administrador; pasa a PERIODO_ADICIONAL cuando se alcanza el cierre.

@@ -3,6 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { UsuarioAutenticado } from '../autenticacion/dominio/usuario-autenticado.interface';
 import { RolUsuario } from '../usuarios/dominio/rol-usuario.enum';
+import { UsuarioEntity } from '../usuarios/dominio/usuario.entity';
+import { AsignarAnfitrionDto } from './dto/asignar-anfitrion.dto';
 import { EventoEntity } from './dominio/evento.entity';
 import { EstadoEvento } from './dominio/estado-evento.enum';
 import { CrearEventoDto } from './dto/crear-evento.dto';
@@ -30,6 +32,21 @@ export class EventosService {
       premio,
       estado: EstadoEvento.BORRADOR,
     }));
+  }
+
+  async asignarAnfitrion(id: string, dto: AsignarAnfitrionDto, actor: UsuarioAutenticado): Promise<EventoEntity> {
+    if (actor.rol !== RolUsuario.ADMINISTRADOR) throw new ForbiddenException('Solo un administrador puede reasignar el anfitrión');
+    return this.fuenteDatos.transaction(async (gestor) => {
+      const eventos = gestor.getRepository(EventoEntity);
+      const evento = await eventos.findOne({ where: { id }, lock: { mode: 'pessimistic_write' } });
+      if (!evento) throw new NotFoundException('No se ha encontrado la edición');
+      const anfitrion = await gestor.getRepository(UsuarioEntity).findOne({
+        where: { id: dto.anfitrionId, rol: RolUsuario.ANFITRION, activo: true },
+      });
+      if (!anfitrion) throw new BadRequestException('La cuenta indicada debe existir, estar activa y tener rol ANFITRION');
+      evento.anfitrionId = anfitrion.id;
+      return eventos.save(evento);
+    });
   }
 
   listar(): Promise<EventoEntity[]> {

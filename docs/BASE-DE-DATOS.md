@@ -26,7 +26,7 @@ Restricciones y reglas:
 - Duración adicional positiva.
 - Estado dentro de los valores permitidos.
 - El anfitrión referencia una cuenta existente y no se elimina mientras tenga ediciones.
-- Los eventos creados después de la migración guardan anfitrión. Las ediciones anteriores quedan sin responsable asignado y requieren asignación administrativa explícita.
+- Los eventos creados después de la migración guardan anfitrión. Las ediciones anteriores quedan sin responsable asignado y requieren asignación administrativa explícita mediante `PATCH /eventos/:id/anfitrion`.
 
 ## Migraciones
 

@@ -6,6 +6,7 @@ import { RolUsuario } from '../usuarios/dominio/rol-usuario.enum';
 import { EventosService } from './eventos.service';
 import { CrearEventoDto } from './dto/crear-evento.dto';
 import { ActualizarEventoDto } from './dto/actualizar-evento.dto';
+import { AsignarAnfitrionDto } from './dto/asignar-anfitrion.dto';
 
 @Controller('eventos')
 export class EventosController {
@@ -15,6 +16,12 @@ export class EventosController {
   @Post()
   crear(@Body() dto: CrearEventoDto, @Req() req: Request & { user: UsuarioAutenticado }) {
     return this.eventosService.crear(dto, req.user);
+  }
+
+  @Roles(RolUsuario.ADMINISTRADOR)
+  @Patch(':id/anfitrion')
+  asignarAnfitrion(@Param('id', new ParseUUIDPipe()) id: string, @Body() dto: AsignarAnfitrionDto, @Req() req: Request & { user: UsuarioAutenticado }) {
+    return this.eventosService.asignarAnfitrion(id, dto, req.user);
   }
 
   @Get()

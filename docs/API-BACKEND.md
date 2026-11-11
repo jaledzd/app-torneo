@@ -2,23 +2,20 @@
 
 Base URL local: `http://localhost:3000`.
 
-Los ejemplos usan JSON. Las rutas de eventos se encuentran en desarrollo y todavía no tienen autenticación; no deben exponerse a Internet como API de producción hasta implementar autorización de anfitrión.
+Las rutas de escritura todavía no tienen autenticación ni autorización de anfitrión. No expongas el backend a Internet como API de producción hasta implementar esos controles.
 
 ## Convenciones
 
-- Las fechas se envían como cadenas ISO 8601 con zona horaria, por ejemplo `2030-06-10T10:00:00.000Z`.
-- Los identificadores de evento son UUID.
-- Los errores usan el formato estándar de excepciones HTTP de NestJS.
-- Los DTO rechazan propiedades desconocidas gracias al ValidationPipe global.
-- La API devuelve los campos persistidos de la entidad. Más adelante se introducirán DTO de respuesta para controlar explícitamente la representación pública.
+- Fechas ISO 8601 con zona horaria.
+- UUID para identificar ediciones.
+- Excepciones HTTP estándar de NestJS.
+- Los DTO rechazan propiedades desconocidas mediante el ValidationPipe global.
 
 ## Salud
 
 ### GET /salud
 
 Comprueba que el proceso HTTP responde.
-
-Respuesta orientativa:
 
 ~~~json
 {
@@ -28,13 +25,11 @@ Respuesta orientativa:
 }
 ~~~
 
-## Eventos
+## Ediciones
 
 ### POST /eventos
 
 Crea una edición en estado BORRADOR.
-
-Petición:
 
 ~~~json
 {
@@ -45,26 +40,19 @@ Petición:
 }
 ~~~
 
-Validaciones:
-- Ambas fechas deben ser ISO 8601.
-- La fecha de cierre debe ser posterior al inicio.
-- La duración del periodo adicional debe ser un entero positivo.
-- El premio debe ser texto no vacío y no superar 250 caracteres.
-- El identificador y el estado inicial los establece el backend.
+Reglas: fechas ISO válidas, cierre posterior al inicio, duración entera positiva y premio de texto no vacío (máximo 250 caracteres). El identificador y estado inicial los genera el servidor.
 
 ### GET /eventos
 
-Lista las ediciones, de más reciente a más antigua.
+Lista ediciones de más reciente a más antigua.
 
 ### GET /eventos/:id
 
-Devuelve una edición por UUID. Respuestas: 200 si existe, 400 si el UUID no tiene formato válido, 404 si no existe.
+Consulta una edición por UUID.
 
 ### PATCH /eventos/:id
 
-Modifica parcialmente la configuración. Solo se permiten cambios mientras el estado sea BORRADOR.
-
-Ejemplo:
+Modifica parcialmente la configuración, únicamente mientras la edición siga en BORRADOR.
 
 ~~~json
 {
@@ -75,9 +63,13 @@ Ejemplo:
 
 ### POST /eventos/:id/iniciar
 
-Transición prevista de BORRADOR a EN_CURSO. Solo debe permitirse cuando llegue la fecha de inicio configurada.
+Cambia BORRADOR a EN_CURSO cuando la fecha de inicio configurada ya ha llegado. No se permite iniciar anticipadamente.
 
-## Códigos HTTP habituales
+### POST /eventos/:id/cerrar-enfrentamientos
+
+Cambia EN_CURSO a PERIODO_ADICIONAL cuando se alcanza la fecha de cierre. Las partidas que ya estén activas podrán terminar; la gestión de esas partidas se implementará en el módulo correspondiente.
+
+## Respuestas HTTP
 
 | Código | Significado |
 |---|---|
@@ -87,11 +79,11 @@ Transición prevista de BORRADOR a EN_CURSO. Solo debe permitirse cuando llegue 
 | 404 | Edición inexistente. |
 | 500 | Error interno no esperado. |
 
-## Pendiente antes de producción
+## Pendiente
 
 - Autenticación y autorización de anfitrión.
-- DTO de respuesta para no exponer campos internos.
-- Paginación y filtros en listados.
-- Documentación OpenAPI/Swagger.
-- Rate limiting y políticas de CORS.
-- Pruebas HTTP y de integración con PostgreSQL real.
+- DTO explícitos de respuesta.
+- Paginación y filtros.
+- OpenAPI/Swagger.
+- Limitación de peticiones, CORS y cabeceras de seguridad.
+- Pruebas de integración con PostgreSQL real.

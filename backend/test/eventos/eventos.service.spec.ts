@@ -6,7 +6,13 @@ import { EstadoEvento } from '../../src/eventos/dominio/estado-evento.enum';
 
 describe('EventosService', () => {
   let service: EventosService;
-  let repository: jest.Mocked<Pick<Repository<EventoEntity>, 'create' | 'save' | 'find' | 'findOne' | 'update'>>;
+  let repository: {
+    create: jest.Mock;
+    save: jest.Mock;
+    find: jest.Mock;
+    findOne: jest.Mock;
+    update: jest.Mock;
+  };
 
   beforeEach(() => {
     repository = {
@@ -20,14 +26,13 @@ describe('EventosService', () => {
   });
 
   it('crea una edición en estado BORRADOR', async () => {
-    const dto = {
+    const evento = await service.crear({
       fechaInicio: '2030-06-10T10:00:00.000Z',
       fechaCierreEnfrentamientos: '2030-06-10T18:00:00.000Z',
       duracionPeriodoAdicionalMinutos: 30,
       premio: 'Consola',
-    };
+    });
 
-    const evento = await service.crear(dto);
     expect(evento.estado).toBe(EstadoEvento.BORRADOR);
     expect(evento.fechaInicio).toBeInstanceOf(Date);
     expect(repository.save).toHaveBeenCalledTimes(1);
@@ -39,6 +44,15 @@ describe('EventosService', () => {
       fechaCierreEnfrentamientos: '2030-06-10T10:00:00.000Z',
       duracionPeriodoAdicionalMinutos: 30,
       premio: 'Consola',
+    })).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('rechaza premios vacíos después de eliminar espacios', async () => {
+    await expect(service.crear({
+      fechaInicio: '2030-06-10T10:00:00.000Z',
+      fechaCierreEnfrentamientos: '2030-06-10T18:00:00.000Z',
+      duracionPeriodoAdicionalMinutos: 30,
+      premio: '   ',
     })).rejects.toBeInstanceOf(BadRequestException);
   });
 

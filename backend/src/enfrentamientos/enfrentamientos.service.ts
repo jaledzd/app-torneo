@@ -1,7 +1,9 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { ApuchiCoinsService } from '../apuchicoins/apuchicoins.service';
+import { UsuarioAutenticado } from '../autenticacion/dominio/usuario-autenticado.interface';
+import { RolUsuario } from '../usuarios/dominio/rol-usuario.enum';
 import { EventoEntity } from '../eventos/dominio/evento.entity';
 import { EstadoEvento } from '../eventos/dominio/estado-evento.enum';
 import { EstadoParticipante } from '../participantes/dominio/estado-participante.enum';
@@ -82,8 +84,35 @@ export class EnfrentamientosService {
     });
   }
 
-  async finalizarPartida(eventoId: string, partidaId: string, ganadorId: string): Promise<PartidaEntity> {
+  async rechazarReto(eventoId: string, retoId: string, usuarioId: string): Promise<RetoEntity> {
     return this.fuenteDatos.transaction(async (gestor) => {
+      const evento = await gestor.getRepository(EventoEntity).findOne({ where: { id: eventoId }, lock: { mode: 'pessimistic_write' } });
+      if (!evento || evento.estado !== EstadoEvento.EN_CURSO || Date.now() >= evento.fechaCierreEnfrentamientos.getTime()) {
+        throw new BadRequestException('La edición ya no admite respuestas a retos');
+      }
+      const repo = gestor.getRepository(RetoEntity);
+      const reto = await repo.findOne({ where: { id: retoId, eventoId }, lock: { mode: 'pessimistic_write' } });
+      if (!reto) throw new NotFoundException('No se ha encontrado el reto');
+      const destinatario = await gestor.getRepository(ParticipanteEntity).findOne({ where: { id: reto.destinatarioId, eventoId, usuarioId } });
+      if (!destinatario) throw new ForbiddenException('Solo el destinatario puede rechazar este reto');
+      if (reto.estado !== EstadoReto.PENDIENTE) throw new ConflictException('El reto ya no está pendiente');
+      if (reto.caducaEn <= new Date()) {
+        reto.estado = EstadoReto.CADUCADO;
+        await repo.save(reto);
+        throw new ConflictException('El plazo de aceptación del reto ha terminado');
+      }
+      reto.estado = EstadoReto.RECHAZADO;
+      return repo.save(reto);
+    });
+  }
+
+  async finalizarPartida(eventoId: string, partidaId: string, ganadorId: string, actor: UsuarioAutenticado): Promise<PartidaEntity> {
+    return this.fuenteDatos.transaction(async (gestor) => {
+      const evento = await gestor.getRepository(EventoEntity).findOne({ where: { id: eventoId }, lock: { mode: 'pessimistic_write' } });
+      if (!evento) throw new NotFoundException('No se ha encontrado la edición');
+      if (actor.rol !== RolUsuario.ADMINISTRADOR && evento.anfitrionId !== actor.id) {
+        throw new ForbiddenException('Solo el anfitrión responsable o un administrador puede finalizar partidas');
+      }
       const repo = gestor.getRepository(PartidaEntity);
       const partida = await repo.findOne({ where: { id: partidaId, eventoId }, lock: { mode: 'pessimistic_write' } });
       if (!partida) throw new NotFoundException('No se ha encontrado la partida');

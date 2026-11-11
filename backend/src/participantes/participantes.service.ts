@@ -48,6 +48,11 @@ export class ParticipantesService {
 
   async retirar(eventoId: string, participanteId: string): Promise<ParticipanteEntity> {
     return this.fuenteDatos.transaction(async (gestor) => {
+      const evento = await gestor.getRepository(EventoEntity).findOne({ where: { id: eventoId }, lock: { mode: 'pessimistic_write' } });
+      if (!evento) throw new NotFoundException('No se ha encontrado la edición');
+      if (![EstadoEvento.BORRADOR, EstadoEvento.EN_CURSO, EstadoEvento.PERIODO_ADICIONAL].includes(evento.estado)) {
+        throw new BadRequestException('No se puede modificar una inscripción en una edición finalizada');
+      }
       const repo = gestor.getRepository(ParticipanteEntity);
       const participante = await repo.findOne({ where: { id: participanteId, eventoId }, lock: { mode: 'pessimistic_write' } });
       if (!participante) throw new NotFoundException('No se ha encontrado la inscripción');

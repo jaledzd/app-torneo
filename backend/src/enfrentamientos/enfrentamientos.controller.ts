@@ -23,10 +23,15 @@ export class EnfrentamientosController {
   aceptarReto(@Param('eventoId', new ParseUUIDPipe()) eventoId: string, @Param('retoId', new ParseUUIDPipe()) retoId: string, @Body() datos: AceptarRetoDto, @Req() peticion: Request & { user: UsuarioAutenticado }) {
     return this.servicio.aceptarReto(eventoId, retoId, peticion.user.id, datos.puestoId, datos.videojuegoId);
   }
+  @Post('retos/:retoId/rechazar')
+  rechazarReto(@Param('eventoId', new ParseUUIDPipe()) eventoId: string, @Param('retoId', new ParseUUIDPipe()) retoId: string, @Req() peticion: Request & { user: UsuarioAutenticado }) {
+    return this.servicio.rechazarReto(eventoId, retoId, peticion.user.id);
+  }
+
   @Roles(RolUsuario.ANFITRION, RolUsuario.ADMINISTRADOR)
   @Post('partidas/:partidaId/finalizar')
-  finalizarPartida(@Param('eventoId', new ParseUUIDPipe()) eventoId: string, @Param('partidaId', new ParseUUIDPipe()) partidaId: string, @Body() datos: FinalizarPartidaDto) {
-    return this.servicio.finalizarPartida(eventoId, partidaId, datos.ganadorId);
+  finalizarPartida(@Param('eventoId', new ParseUUIDPipe()) eventoId: string, @Param('partidaId', new ParseUUIDPipe()) partidaId: string, @Body() datos: FinalizarPartidaDto, @Req() peticion: Request & { user: UsuarioAutenticado }) {
+    return this.servicio.finalizarPartida(eventoId, partidaId, datos.ganadorId, peticion.user);
   }
   @Get('partidas')
   listarPartidas(@Param('eventoId', new ParseUUIDPipe()) eventoId: string) { return this.servicio.listarPartidas(eventoId); }

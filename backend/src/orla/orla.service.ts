@@ -84,7 +84,11 @@ export class OrlaService {
       if (![EstadoEvento.EN_CURSO, EstadoEvento.PERIODO_ADICIONAL].includes(evento.estado)) throw new BadRequestException('La orla solo se puede cerrar durante el torneo o el periodo adicional');
       const limite = this.limiteOrla(evento);
       const partidasActivas = await gestor.getRepository(PartidaEntity).count({ where: { eventoId, estado: EstadoPartida.EN_CURSO } });
-      if (Date.now() < limite && partidasActivas > 0) throw new ConflictException('No se puede cerrar antes de tiempo mientras haya partidas en curso');
+      if (Date.now() < limite) {
+        if (partidasActivas > 0) throw new ConflictException('No se puede cerrar antes de tiempo mientras haya partidas en curso');
+        const papeletasEnCartera = await gestor.getRepository(PapeletaEntity).count({ where: { eventoId, estado: EstadoPapeleta.CARTERA } });
+        if (papeletasEnCartera > 0) throw new ConflictException('Todavía quedan papeletas sin depositar en las carteras');
+      }
       if (Date.now() < evento.fechaCierreEnfrentamientos.getTime()) throw new BadRequestException('El torneo todavía no ha llegado al cierre de enfrentamientos');
       evento.estado = EstadoEvento.PERIODO_ADICIONAL;
       evento.orlaCerradaEn = new Date();

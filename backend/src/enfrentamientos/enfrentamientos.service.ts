@@ -48,6 +48,10 @@ export class EnfrentamientosService {
 
   async aceptarReto(eventoId: string, retoId: string, destinatarioUsuarioId: string, puestoId: string, videojuegoId: string): Promise<PartidaEntity> {
     return this.fuenteDatos.transaction(async (gestor) => {
+      // Todas las operaciones del evento bloquean primero la edición. Así se
+      // mantiene un orden de bloqueo común y se evitan interbloqueos con el envío.
+      const evento = await gestor.getRepository(EventoEntity).findOne({ where: { id: eventoId }, lock: { mode: 'pessimistic_write' } });
+      if (!evento || evento.estado !== EstadoEvento.EN_CURSO || Date.now() >= evento.fechaCierreEnfrentamientos.getTime()) throw new BadRequestException('La edición ya no permite iniciar partidas');
       const retosRepo = gestor.getRepository(RetoEntity);
       const reto = await retosRepo.findOne({ where: { id: retoId, eventoId }, lock: { mode: 'pessimistic_write' } });
       if (!reto) throw new NotFoundException('No se ha encontrado el reto');
@@ -55,8 +59,6 @@ export class EnfrentamientosService {
       if (!destinatario) throw new BadRequestException('Solo el destinatario puede aceptar este reto');
       if (reto.estado !== EstadoReto.PENDIENTE) throw new ConflictException('El reto ya no está pendiente');
       if (reto.caducaEn <= new Date()) throw new BadRequestException('El plazo de aceptación del reto ha terminado');
-      const evento = await gestor.getRepository(EventoEntity).findOne({ where: { id: eventoId }, lock: { mode: 'pessimistic_write' } });
-      if (!evento || evento.estado !== EstadoEvento.EN_CURSO || Date.now() >= evento.fechaCierreEnfrentamientos.getTime()) throw new BadRequestException('La edición ya no permite iniciar partidas');
       const ids = [reto.emisorId, reto.destinatarioId].sort();
       const participantes = await gestor.getRepository(ParticipanteEntity).createQueryBuilder('p').setLock('pessimistic_write')
         .where('p.evento_id = :eventoId AND p.id IN (:...ids) AND p.estado = :estado', { eventoId, ids, estado: EstadoParticipante.INSCRITO }).getMany();

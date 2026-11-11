@@ -2,69 +2,71 @@
 
 API de APUCHITORNEO desarrollada con **NestJS 12, TypeScript, PostgreSQL y TypeORM**.
 
-El backend centraliza las reglas del torneo. El cliente móvil no decide si un reto, una partida, una recompensa o un sorteo son válidos: el servidor debe comprobarlo.
+El backend centraliza las reglas del torneo. El cliente móvil Expo no decide si un reto, una partida, una recompensa o un sorteo son válidos: el servidor comprueba las reglas y persiste los cambios.
 
-## Estado real
+## Estado del backend
 
-- NestJS y configuración global de validación.
-- Endpoint de salud `GET /salud`.
-- PostgreSQL configurado mediante variables de entorno.
-- TypeORM con migraciones; `synchronize` permanece desactivado.
-- Entidad, migración y CRUD inicial de ediciones.
-- Pruebas unitarias del servicio y pruebas HTTP con servicios simulados.
-- **Pendiente:** regenerar `package-lock.json` tras incorporar dependencias y ejecutar build/pruebas en un entorno Node compatible.
-- **Pendiente:** autenticación y autorización. Las rutas de escritura actuales no están protegidas; no exponer esta API públicamente.
+Implementado en la rama `develop`:
+
+- Autenticación mediante JWT y contraseñas derivadas con scrypt.
+- Autorización global por roles y rutas públicas explícitas.
+- Registro de cuentas y autoinscripción en ediciones.
+- Gestión de ediciones, catálogo de videojuegos y puestos compatibles.
+- Retos con caducidad, aceptación y creación transaccional de partidas.
+- Reservas independientes de jugadores, puestos y videojuegos.
+- Finalización manual de partidas y recompensa de una ApuchiCoin al ganador.
+- Cartera de ApuchiCoins y consulta del libro de movimientos.
+- Emisión administrativa de papeletas, depósito por participantes y sorteo único.
+- Migraciones PostgreSQL; `synchronize` permanece desactivado.
+- Documentación funcional y técnica por módulos.
+
+## Pendiente de decisiones o integración
+
+- No está definido el precio ni el mecanismo de compra de papeletas; la emisión actual es administrativa y no descuenta monedas.
+- Falta el canal de notificaciones en tiempo real para Expo. El resultado del sorteo y los cambios se pueden consultar por HTTP.
+- El rol ANFITRION es global y aún no está vinculado a una edición concreta.
+- Falta definir el mecanismo de alta/promoción segura de anfitriones y administradores.
+- Swagger, rate limiting, CORS de los orígenes definitivos y paginación.
+- Preparar el adaptador de persistencia/ejecución para AWS Lambda, RDS Proxy y Secrets Manager.
 
 ## Requisitos
 
-- Node.js **22.22.3 o superior** para la cadena de herramientas actualmente fijada.
+- Node.js **22.22.3 o superior**.
 - npm.
-- Docker Desktop (recomendado para levantar PostgreSQL local).
+- Docker Desktop recomendado para PostgreSQL local.
 
 ## Preparar entorno local
 
-Desde la carpeta `backend/`:
+Desde `backend/`, crea el archivo de entorno:
 
-~~~bash
-cp .env.example .env
-~~~
-
-En PowerShell:
-
-~~~powershell
+```powershell
 Copy-Item .env.example .env
-~~~
+```
 
-Los valores de ejemplo son únicamente para desarrollo local. No uses estas credenciales en un entorno compartido o productivo.
+Los valores de ejemplo son únicamente para desarrollo local. No uses esas credenciales en un entorno compartido o productivo.
 
 Arranca PostgreSQL:
 
-~~~bash
+```powershell
 docker compose up -d postgres
-~~~
+```
 
-Instala las dependencias y sincroniza el lockfile:
+Instala las dependencias (el usuario debe sincronizar el lockfile localmente):
 
-~~~bash
+```powershell
 npm install
-~~~
+```
 
-Compila y ejecuta las migraciones:
+Aplica las migraciones e inicia la API:
 
-~~~bash
-npm run build
+```powershell
 npm run migration:run
-~~~
-
-Inicia la API:
-
-~~~bash
 npm run start:dev
-~~~
+```
 
 La API escucha por defecto en `http://localhost:3000`.
 
-## Comandos
+## Comandos disponibles
 
 | Comando | Propósito |
 |---|---|
@@ -72,72 +74,36 @@ La API escucha por defecto en `http://localhost:3000`.
 | `npm run build` | Compila el backend. |
 | `npm run start:prod` | Ejecuta la versión compilada. |
 | `npm run test` | Pruebas unitarias. |
-| `npm run test:e2e` | Pruebas HTTP end-to-end aisladas de PostgreSQL. |
-| `npm run test:cov` | Cobertura de pruebas. |
+| `npm run test:e2e` | Pruebas HTTP end-to-end. |
 | `npm run lint` | Análisis estático. |
 | `npm run migration:show` | Muestra migraciones pendientes/aplicadas. |
 | `npm run migration:run` | Aplica migraciones. |
 | `npm run migration:revert` | Revierte la última migración. |
 
-## Configuración
+## Variables de entorno
 
-Variables disponibles en `.env.example`:
+Consulta `.env.example`: `NODE_ENV`, `PORT`, `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE` y `JWT_SECRETO`. El secreto JWT debe tener al menos 32 caracteres.
 
-| Variable | Uso |
-|---|---|
-| NODE_ENV | Entorno de ejecución. |
-| PORT | Puerto HTTP. |
-| DB_HOST | Servidor PostgreSQL. |
-| DB_PORT | Puerto PostgreSQL. |
-| DB_USERNAME | Usuario de base de datos. |
-| DB_PASSWORD | Contraseña de base de datos. |
-| DB_DATABASE | Nombre de base de datos. |
+## Organización
 
-## Arquitectura del código
+- `src/autenticacion/`: JWT, estrategia, guardias y decoradores.
+- `src/usuarios/`: cuentas y roles.
+- `src/eventos/`: ciclo de vida de las ediciones.
+- `src/participantes/`: inscripciones por edición.
+- `src/videojuegos/` y `src/puestos/`: catálogo y recursos físicos.
+- `src/enfrentamientos/`: retos y partidas.
+- `src/apuchicoins/`: saldo y libro mayor.
+- `src/orla/`: papeletas y sorteo.
+- `src/database/`: conexión, DataSource y migraciones.
 
-- `main.ts`: crea la aplicación, registra pipes globales e inicia el servidor.
-- `app.module.ts`: módulo raíz.
-- `database/`: conexión TypeORM, DataSource de CLI y migraciones.
-- `salud/`: comprobación HTTP del proceso.
-- `eventos/`: controlador, servicio, DTO, enum y entidad de ediciones.
-
-El controlador traduce HTTP a llamadas de aplicación. El servicio aplica reglas de negocio. La entidad representa la tabla persistida. Los DTO validan los datos de entrada. Las migraciones versionan el esquema.
-
-## Endpoints implementados
-
-| Método | Ruta | Descripción |
-|---|---|---|
-| GET | `/salud` | Estado del proceso HTTP. |
-| POST | `/eventos` | Crear edición en BORRADOR. |
-| GET | `/eventos` | Listar ediciones. |
-| GET | `/eventos/:id` | Consultar edición. |
-| PATCH | `/eventos/:id` | Editar configuración en BORRADOR. |
-| POST | `/eventos/:id/iniciar` | Pasar a EN_CURSO cuando llega la fecha de inicio. |
-| POST | `/eventos/:id/cerrar-enfrentamientos` | Pasar a PERIODO_ADICIONAL al llegar al cierre. |
-
-La referencia de peticiones, respuestas y errores está en [API-BACKEND.md](../docs/API-BACKEND.md).
-
-## Validación global
-
-El `ValidationPipe` utiliza:
-
-- `whitelist: true`: descarta propiedades que no estén declaradas en el DTO.
-- `forbidNonWhitelisted: true`: rechaza propiedades desconocidas.
-- `transform: true`: transforma valores a los tipos definidos cuando corresponde.
-
-Las validaciones entre varios campos y las transiciones de estado se comprueban en el servicio.
-
-## Migraciones y persistencia
-
-No se utiliza `synchronize: true`. La estructura de PostgreSQL se modifica mediante migraciones revisables y versionadas.
-
-Consulta [BASE-DE-DATOS.md](../docs/BASE-DE-DATOS.md) para entender la primera tabla, sus restricciones y los comandos de migración.
-
-## Documentación de aprendizaje
+## Documentación para estudiar
 
 - [Requisitos funcionales](../docs/REQUISITOS-FUNCIONALES.md)
 - [Arquitectura](../docs/ARQUITECTURA.md)
 - [Modelo de datos](../docs/BASE-DE-DATOS.md)
 - [Referencia de API](../docs/API-BACKEND.md)
+- [Retos y partidas](../docs/MODULO-ENFRENTAMIENTOS.md)
+- [ApuchiCoins](../docs/MODULO-APUCHICOINS.md)
+- [Orla y sorteo](../docs/MODULO-ORLA-SORTEO.md)
 
-Cada módulo nuevo debe incluir explicación de responsabilidades, reglas, endpoints, errores y pruebas.
+El patrón general es: controlador HTTP -> servicio de aplicación -> entidades/repositorios -> PostgreSQL. Las reglas que afectan a varios recursos deben ejecutarse en una misma transacción.

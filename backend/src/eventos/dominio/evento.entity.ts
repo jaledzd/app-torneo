@@ -1,14 +1,19 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { UsuarioEntity } from '../../usuarios/dominio/usuario.entity';
 import { EstadoEvento } from './estado-evento.enum';
 
-/**
- * Edición persistida del torneo. Las fechas con zona horaria guardan
- * instantes absolutos, evitando ambigüedades entre servidores y clientes.
- */
+/** Edición del torneo y cuenta anfitriona responsable de su administración. */
 @Entity({ name: 'eventos' })
 export class EventoEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Column({ type: 'uuid', name: 'anfitrion_id' })
+  anfitrionId: string;
+
+  @ManyToOne(() => UsuarioEntity, { onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'anfitrion_id' })
+  anfitrion: UsuarioEntity;
 
   @Column({ type: 'timestamptz', name: 'fecha_inicio' })
   fechaInicio: Date;

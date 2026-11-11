@@ -102,24 +102,32 @@ Estructura parcial del backend tras la primera implementación:
 app-torneo/
 ├── backend/
 │   ├── src/
+│   │   ├── database/
+│   │   │   ├── migrations/
+│   │   │   ├── data-source.ts
+│   │   │   └── database.module.ts
 │   │   ├── eventos/
 │   │   │   ├── dominio/
 │   │   │   │   ├── estado-evento.enum.ts
-│   │   │   │   └── evento.interface.ts
+│   │   │   │   └── evento.entity.ts
 │   │   │   ├── dto/
-│   │   │   │   └── crear-evento.dto.ts
+│   │   │   │   ├── crear-evento.dto.ts
+│   │   │   │   └── actualizar-evento.dto.ts
+│   │   │   ├── eventos.controller.ts
+│   │   │   ├── eventos.service.ts
 │   │   │   └── eventos.module.ts
 │   │   ├── salud/
-│   │   │   ├── salud.module.ts
-│   │   │   ├── salud.controller.ts
-│   │   │   └── salud.service.ts
 │   │   ├── app.module.ts
-│   │   ├── app.controller.ts
-│   │   ├── app.service.ts
 │   │   └── main.ts
 │   ├── test/
+│   ├── docker-compose.yml
 │   ├── package.json
 │   └── README.md
+├── docs/
+│   ├── REQUISITOS-FUNCIONALES.md
+│   ├── ARQUITECTURA.md
+│   ├── API-BACKEND.md
+│   └── BASE-DE-DATOS.md
 └── README.md
 ~~~
 
@@ -131,14 +139,15 @@ La estructura se ampliará cuando se implementen nuevos módulos. Este árbol de
 - [x] Proyecto NestJS inicializado.
 - [x] Endpoint de salud GET /salud.
 - [x] ValidationPipe global con whitelist, forbidNonWhitelisted y transform.
-- [x] Enum inicial de estados del evento.
-- [x] Interfaz inicial Evento.
-- [x] DTO inicial CrearEventoDto.
+- [x] Entidad, DTO y enum iniciales de eventos.
 - [x] Servicio y controlador inicial de eventos.
-- [x] Pruebas unitarias y HTTP iniciales escritas (pendiente ejecutar y validar).
-- [x] Configuración inicial de PostgreSQL y TypeORM.\n- [x] Migración inicial de la tabla eventos.\n- [ ] Regenerar package-lock.json y validar build/pruebas en CI.\n- [x] Migración inicial de la tabla eventos.\n- [ ] Regenerar package-lock.json y validar build/pruebas en CI.
-- [ ] Participantes, retos, partidas, economía y sorteo.\n- [ ] Automatizar transiciones de fase y añadir autenticación/autorización.\n- [ ] Automatizar transiciones temporales de fase y proteger operaciones con autenticación.
+- [x] Pruebas unitarias y HTTP iniciales escritas (pendiente ejecutarlas y validar resultados).
+- [x] Configuración inicial de PostgreSQL y TypeORM.
+- [x] Migración inicial de la tabla eventos.
+- [ ] Sincronizar package-lock.json y validar build/pruebas en CI.
+- [ ] Participantes, retos, partidas, economía y sorteo.
 - [ ] Autenticación y autorización.
+- [ ] Automatizar transiciones temporales de fase.
 - [ ] Comunicación en tiempo real.
 
 ### Aplicación móvil e infraestructura
@@ -152,13 +161,19 @@ Las tareas solo se marcarán como terminadas cuando exista implementación compr
 
 ## Puesta en marcha
 
-Desde la carpeta backend:
+Desde la carpeta backend, copia `.env.example` a `.env`, inicia PostgreSQL, instala dependencias y aplica la migración inicial:
 
 ~~~bash
 cd backend
+cp .env.example .env
+docker compose up -d postgres
 npm install
+npm run build
+npm run migration:run
 npm run start:dev
 ~~~
+
+En PowerShell, utiliza `Copy-Item .env.example .env` en lugar de `cp`.
 
 NestJS escucha por defecto en el puerto 3000, o en el definido por la variable PORT.
 
@@ -184,7 +199,9 @@ npm run lint
 
 ## Documentación y ruta de estudio
 
-- [Requisitos funcionales](docs/REQUISITOS-FUNCIONALES.md)\n- [API del backend](docs/API-BACKEND.md)\n- [Base de datos](docs/BASE-DE-DATOS.md)\n- [API del backend](docs/API-BACKEND.md)\n- [Base de datos](docs/BASE-DE-DATOS.md)\n- [API del backend](docs/API-BACKEND.md)\n- [Base de datos](docs/BASE-DE-DATOS.md)
+- [Requisitos funcionales](docs/REQUISITOS-FUNCIONALES.md)
+- [API del backend](docs/API-BACKEND.md)
+- [Base de datos](docs/BASE-DE-DATOS.md)\n- [API del backend](docs/API-BACKEND.md)\n- [Base de datos](docs/BASE-DE-DATOS.md)\n- [API del backend](docs/API-BACKEND.md)\n- [Base de datos](docs/BASE-DE-DATOS.md)\n- [API del backend](docs/API-BACKEND.md)\n- [Base de datos](docs/BASE-DE-DATOS.md)
 - [Arquitectura y decisiones técnicas](docs/ARQUITECTURA.md)
 - [Documentación específica del backend](backend/README.md)
 

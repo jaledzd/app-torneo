@@ -9,6 +9,7 @@ import { PartidaEntity } from './dominio/partida.entity';
 import { RetoEntity } from './dominio/reto.entity';
 import { EnfrentamientosController } from './enfrentamientos.controller';
 import { EnfrentamientosService } from './enfrentamientos.service';
+
 @Module({
   imports: [ApuchiCoinsModule, TypeOrmModule.forFeature([EventoEntity, ParticipanteEntity, PuestoEntity, VideojuegoEntity, PartidaEntity, RetoEntity])],
   controllers: [EnfrentamientosController],

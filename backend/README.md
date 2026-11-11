@@ -1,85 +1,143 @@
 # Backend de APUCHITORNEO
 
-API del sistema APUCHITORNEO desarrollada con **NestJS y TypeScript**.
+API de APUCHITORNEO desarrollada con **NestJS 12, TypeScript, PostgreSQL y TypeORM**.
 
-Este backend centraliza las reglas de negocio del torneo. La aplicación móvil no debe decidir por sí sola si un reto, una partida, una recompensa o un sorteo son válidos: esas decisiones se comprueban en el servidor.
+El backend centraliza las reglas del torneo. El cliente móvil no decide si un reto, una partida, una recompensa o un sorteo son válidos: el servidor debe comprobarlo.
 
-## Estado actual
+## Estado real
 
-- NestJS inicializado.
-- Endpoint de comprobación de salud: `GET /salud`.
-- `ValidationPipe` global configurado.
-- Primeros contratos del dominio de eventos: enum, interfaz y DTO.
-- El módulo de eventos todavía necesita su servicio, controlador, pruebas y persistencia.
-- PostgreSQL y TypeORM están planificados, no configurados todavía.
+- NestJS y configuración global de validación.
+- Endpoint de salud `GET /salud`.
+- PostgreSQL configurado mediante variables de entorno.
+- TypeORM con migraciones; `synchronize` permanece desactivado.
+- Entidad, migración y CRUD inicial de ediciones.
+- Pruebas unitarias del servicio y pruebas HTTP con servicios simulados.
+- **Pendiente:** regenerar `package-lock.json` tras incorporar dependencias y ejecutar build/pruebas en un entorno Node compatible.
+- **Pendiente:** autenticación y autorización. Las rutas de escritura actuales no están protegidas; no exponer esta API públicamente.
 
 ## Requisitos
 
-- Node.js compatible con las versiones declaradas en el proyecto.
+- Node.js **22.22.3 o superior** para la cadena de herramientas actualmente fijada.
 - npm.
+- Docker Desktop (recomendado para levantar PostgreSQL local).
 
-## Instalación y ejecución
+## Preparar entorno local
 
-Desde esta carpeta:
+Desde la carpeta `backend/`:
+
+~~~bash
+cp .env.example .env
+~~~
+
+En PowerShell:
+
+~~~powershell
+Copy-Item .env.example .env
+~~~
+
+Los valores de ejemplo son únicamente para desarrollo local. No uses estas credenciales en un entorno compartido o productivo.
+
+Arranca PostgreSQL:
+
+~~~bash
+docker compose up -d postgres
+~~~
+
+Instala las dependencias y sincroniza el lockfile:
 
 ~~~bash
 npm install
+~~~
+
+Compila y ejecuta las migraciones:
+
+~~~bash
+npm run build
+npm run migration:run
+~~~
+
+Inicia la API:
+
+~~~bash
 npm run start:dev
 ~~~
 
-La API escucha por defecto en el puerto `3000`. Se puede cambiar mediante la variable de entorno `PORT`.
+La API escucha por defecto en `http://localhost:3000`.
 
-Comprobar el estado:
-
-~~~http
-GET http://localhost:3000/salud
-~~~
-
-## Scripts
+## Comandos
 
 | Comando | Propósito |
 |---|---|
-| `npm run start` | Inicia NestJS. |
-| `npm run start:dev` | Inicia en modo desarrollo con recarga. |
-| `npm run build` | Compila TypeScript. |
-| `npm run start:prod` | Ejecuta el resultado compilado. |
-| `npm run test` | Ejecuta pruebas unitarias. |
-| `npm run test:e2e` | Ejecuta pruebas end-to-end. |
-| `npm run test:cov` | Genera cobertura de pruebas. |
-| `npm run lint` | Ejecuta el análisis estático configurado. |
+| `npm run start:dev` | Servidor de desarrollo con recarga. |
+| `npm run build` | Compila el backend. |
+| `npm run start:prod` | Ejecuta la versión compilada. |
+| `npm run test` | Pruebas unitarias. |
+| `npm run test:e2e` | Pruebas HTTP end-to-end aisladas de PostgreSQL. |
+| `npm run test:cov` | Cobertura de pruebas. |
+| `npm run lint` | Análisis estático. |
+| `npm run migration:show` | Muestra migraciones pendientes/aplicadas. |
+| `npm run migration:run` | Aplica migraciones. |
+| `npm run migration:revert` | Revierte la última migración. |
 
-## Organización del código
+## Configuración
 
-- `main.ts`: crea la aplicación NestJS, configura validación global e inicia el servidor.
-- `app.module.ts`: módulo raíz que importa los módulos funcionales.
-- `salud/`: endpoint sencillo para comprobar que el proceso responde.
-- `eventos/`: dominio inicial para representar una edición del torneo.
+Variables disponibles en `.env.example`:
 
-Dentro de cada módulo se separarán controlador, servicio, DTO y dominio. El controlador se ocupará del protocolo HTTP; el servicio coordinará los casos de uso; el dominio expresará las reglas del torneo.
+| Variable | Uso |
+|---|---|
+| NODE_ENV | Entorno de ejecución. |
+| PORT | Puerto HTTP. |
+| DB_HOST | Servidor PostgreSQL. |
+| DB_PORT | Puerto PostgreSQL. |
+| DB_USERNAME | Usuario de base de datos. |
+| DB_PASSWORD | Contraseña de base de datos. |
+| DB_DATABASE | Nombre de base de datos. |
 
-## Validación de entrada
+## Arquitectura del código
 
-El `ValidationPipe` global utiliza:
+- `main.ts`: crea la aplicación, registra pipes globales e inicia el servidor.
+- `app.module.ts`: módulo raíz.
+- `database/`: conexión TypeORM, DataSource de CLI y migraciones.
+- `salud/`: comprobación HTTP del proceso.
+- `eventos/`: controlador, servicio, DTO, enum y entidad de ediciones.
 
-- `whitelist: true`: elimina propiedades que no estén declaradas en el DTO.
-- `forbidNonWhitelisted: true`: rechaza peticiones con propiedades no permitidas.
-- `transform: true`: permite transformar los datos de entrada a los tipos definidos cuando corresponda.
+El controlador traduce HTTP a llamadas de aplicación. El servicio aplica reglas de negocio. La entidad representa la tabla persistida. Los DTO validan los datos de entrada. Las migraciones versionan el esquema.
 
-Los DTO utilizan decoradores de validación. **Incidencia pendiente detectada:** el DTO de creación de eventos importa `class-validator`, pero las dependencias declaradas actualmente no incluyen `class-validator` ni `class-transformer`. Hay que añadirlas y sincronizar el lockfile antes de validar una instalación limpia.
+## Endpoints implementados
 
-## Documentación relacionada
+| Método | Ruta | Descripción |
+|---|---|---|
+| GET | `/salud` | Estado del proceso HTTP. |
+| POST | `/eventos` | Crear edición en BORRADOR. |
+| GET | `/eventos` | Listar ediciones. |
+| GET | `/eventos/:id` | Consultar edición. |
+| PATCH | `/eventos/:id` | Editar configuración en BORRADOR. |
+| POST | `/eventos/:id/iniciar` | Pasar a EN_CURSO cuando llega la fecha de inicio. |
+| POST | `/eventos/:id/cerrar-enfrentamientos` | Pasar a PERIODO_ADICIONAL al llegar al cierre. |
+
+La referencia de peticiones, respuestas y errores está en [API-BACKEND.md](../docs/API-BACKEND.md).
+
+## Validación global
+
+El `ValidationPipe` utiliza:
+
+- `whitelist: true`: descarta propiedades que no estén declaradas en el DTO.
+- `forbidNonWhitelisted: true`: rechaza propiedades desconocidas.
+- `transform: true`: transforma valores a los tipos definidos cuando corresponde.
+
+Las validaciones entre varios campos y las transiciones de estado se comprueban en el servicio.
+
+## Migraciones y persistencia
+
+No se utiliza `synchronize: true`. La estructura de PostgreSQL se modifica mediante migraciones revisables y versionadas.
+
+Consulta [BASE-DE-DATOS.md](../docs/BASE-DE-DATOS.md) para entender la primera tabla, sus restricciones y los comandos de migración.
+
+## Documentación de aprendizaje
 
 - [Requisitos funcionales](../docs/REQUISITOS-FUNCIONALES.md)
-- [Arquitectura y decisiones técnicas](../docs/ARQUITECTURA.md)
-- [README general](../README.md)
+- [Arquitectura](../docs/ARQUITECTURA.md)
+- [Modelo de datos](../docs/BASE-DE-DATOS.md)
+- [Referencia de API](../docs/API-BACKEND.md)
 
-## Criterios de calidad
-
-Antes de considerar terminado un módulo:
-
-1. Debe respetar los requisitos funcionales.
-2. Debe validar entradas y estados no permitidos.
-3. Debe tener pruebas unitarias de sus reglas.
-4. Debe tener pruebas HTTP de los endpoints relevantes.
-5. Debe documentar responsabilidades, respuestas y errores.
-6. No debe depender de datos en memoria cuando se haya incorporado la persistencia definitiva.
+Cada módulo nuevo debe incluir explicación de responsabilidades, reglas, endpoints, errores y pruebas.

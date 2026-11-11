@@ -18,10 +18,11 @@ export class ParticipantesService {
     @InjectRepository(EventoEntity) private readonly eventos: Repository<EventoEntity>,
   ) {}
 
-  async inscribir(eventoId: string, usuarioId: string): Promise<ParticipanteEntity> {
+  async inscribir(eventoId: string, usuarioId: string, actor?: UsuarioAutenticado): Promise<ParticipanteEntity> {
     return this.fuenteDatos.transaction(async (gestor) => {
       const evento = await gestor.getRepository(EventoEntity).findOne({ where: { id: eventoId }, lock: { mode: 'pessimistic_write' } });
       if (!evento) throw new NotFoundException('No se ha encontrado la edición');
+      if (actor) this.autorizar(evento, actor);
       if (evento.estado !== EstadoEvento.BORRADOR && evento.estado !== EstadoEvento.EN_CURSO) throw new BadRequestException('La edición no admite nuevas inscripciones');
       if (evento.estado === EstadoEvento.EN_CURSO && Date.now() >= evento.fechaCierreEnfrentamientos.getTime()) throw new BadRequestException('Ha terminado el plazo de inscripción');
       const usuario = await gestor.getRepository(UsuarioEntity).findOne({ where: { id: usuarioId, activo: true } });
@@ -38,8 +39,7 @@ export class ParticipantesService {
   }
 
   async inscribirPorAnfitrion(eventoId: string, usuarioId: string, actor: UsuarioAutenticado): Promise<ParticipanteEntity> {
-    await this.autorizarEdicion(eventoId, actor);
-    return this.inscribir(eventoId, usuarioId);
+    return this.inscribir(eventoId, usuarioId, actor);
   }
 
   async listar(eventoId: string, actor: UsuarioAutenticado): Promise<ParticipanteEntity[]> {
@@ -70,12 +70,6 @@ export class ParticipantesService {
       participante.estado = EstadoParticipante.RETIRADO;
       return repo.save(participante);
     });
-  }
-
-  private async autorizarEdicion(eventoId: string, actor: UsuarioAutenticado): Promise<void> {
-    const evento = await this.eventos.findOne({ where: { id: eventoId } });
-    if (!evento) throw new NotFoundException('No se ha encontrado la edición');
-    this.autorizar(evento, actor);
   }
 
   private autorizar(evento: EventoEntity, actor: UsuarioAutenticado): void {

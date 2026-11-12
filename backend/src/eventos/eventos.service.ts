@@ -75,6 +75,55 @@ export class EventosService {
     return evento;
   }
 
+  /**
+   * Elimina definitivamente una edición y todos sus datos dependientes.
+   * Se borran primero los registros que tienen FKs RESTRICT hacia partidas,
+   * participantes, papeletas y puestos.
+   */
+  async eliminar(id: string, actor: UsuarioAutenticado): Promise<{ mensaje: string }> {
+    return this.fuenteDatos.transaction(async (gestor) => {
+      const repo = gestor.getRepository(EventoEntity);
+      const evento = await repo.findOne({
+        where: { id },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!evento) throw new NotFoundException('No se ha encontrado la edición');
+      this.autorizar(evento, actor);
+
+      // Libro de movimientos: referencia tanto a participantes como a partidas.
+      await gestor.query(
+        'DELETE FROM "movimientos_apuchicoins" WHERE "evento_id" = $1',
+        [id],
+      );
+
+      // El sorteo referencia la papeleta ganadora y al participante ganador.
+      await gestor.query('DELETE FROM "sorteos" WHERE "evento_id" = $1', [id]);
+      await gestor.query('DELETE FROM "papeletas" WHERE "evento_id" = $1', [id]);
+
+      // Los retos mantienen referencias RESTRICT a los participantes.
+      await gestor.query('DELETE FROM "retos" WHERE "evento_id" = $1', [id]);
+
+      // Las reservas bloquean la eliminación de participantes activos.
+      await gestor.query(
+        `DELETE FROM "partidas_jugadores_activos"
+         WHERE "participante_id" IN (
+           SELECT "id" FROM "participantes" WHERE "evento_id" = $1
+         )`,
+        [id],
+      );
+
+      // Las partidas referencian participantes y puestos con ON DELETE RESTRICT.
+      await gestor.query('DELETE FROM "partidas" WHERE "evento_id" = $1', [id]);
+      await gestor.query('DELETE FROM "puestos" WHERE "evento_id" = $1', [id]);
+      await gestor.query('DELETE FROM "participantes" WHERE "evento_id" = $1', [id]);
+
+      await repo.delete(id);
+
+      return { mensaje: 'La edición y todos sus datos asociados se han eliminado definitivamente' };
+    });
+  }
+
   async actualizar(id: string, dto: ActualizarEventoDto, actor: UsuarioAutenticado): Promise<EventoEntity> {
     return this.fuenteDatos.transaction(async (gestor) => {
       const repo = gestor.getRepository(EventoEntity);

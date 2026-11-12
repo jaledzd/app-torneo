@@ -48,41 +48,252 @@ export class EnfrentamientosService {
     });
   }
 
-  async aceptarReto(eventoId: string, retoId: string, destinatarioUsuarioId: string, puestoId: string, videojuegoId: string): Promise<PartidaEntity> {
-    return this.fuenteDatos.transaction(async (gestor) => {
-      // Todas las operaciones del evento bloquean primero la edición. Así se
-      // mantiene un orden de bloqueo común y se evitan interbloqueos con el envío.
-      const evento = await gestor.getRepository(EventoEntity).findOne({ where: { id: eventoId }, lock: { mode: 'pessimistic_write' } });
-      if (!evento || evento.estado !== EstadoEvento.EN_CURSO || Date.now() >= evento.fechaCierreEnfrentamientos.getTime()) throw new BadRequestException('La edición ya no permite iniciar partidas');
-      const retosRepo = gestor.getRepository(RetoEntity);
-      const reto = await retosRepo.findOne({ where: { id: retoId, eventoId }, lock: { mode: 'pessimistic_write' } });
-      if (!reto) throw new NotFoundException('No se ha encontrado el reto');
-      const destinatario = await gestor.getRepository(ParticipanteEntity).findOne({ where: { id: reto.destinatarioId, eventoId, usuarioId: destinatarioUsuarioId } });
-      if (!destinatario) throw new BadRequestException('Solo el destinatario puede aceptar este reto');
-      if (reto.estado !== EstadoReto.PENDIENTE) throw new ConflictException('El reto ya no está pendiente');
-      if (reto.caducaEn <= new Date()) throw new BadRequestException('El plazo de aceptación del reto ha terminado');
-      const ids = [reto.emisorId, reto.destinatarioId].sort();
-      const participantes = await gestor.getRepository(ParticipanteEntity).createQueryBuilder('p').setLock('pessimistic_write')
-        .where('p.evento_id = :eventoId AND p.id IN (:...ids) AND p.estado = :estado', { eventoId, ids, estado: EstadoParticipante.INSCRITO }).getMany();
-      if (participantes.length !== 2) throw new BadRequestException('Los dos jugadores deben seguir inscritos');
-      const puesto = await gestor.getRepository(PuestoEntity).findOne({ where: { id: puestoId, eventoId, activo: true }, relations: { videojuegos: true }, lock: { mode: 'pessimistic_write' } });
-      if (!puesto || !puesto.videojuegos.some((juego) => juego.id === videojuegoId)) throw new BadRequestException('El puesto no es compatible con ese videojuego');
-      const juego = await gestor.getRepository(VideojuegoEntity).findOne({ where: { id: videojuegoId, activo: true }, lock: { mode: 'pessimistic_write' } });
-      if (!juego) throw new NotFoundException('No se ha encontrado el videojuego activo');
-      const ocupacion = await gestor.getRepository(PartidaEntity).createQueryBuilder('p').setLock('pessimistic_write')
-        .where('p.estado = :estado AND (p.puesto_id = :puestoId OR p.videojuego_id = :videojuegoId)', { estado: EstadoPartida.EN_CURSO, puestoId, videojuegoId }).getCount();
-      if (ocupacion) throw new ConflictException('El puesto o el videojuego ya está ocupado');
-      const activos = await gestor.query('SELECT 1 FROM "partidas_jugadores_activos" WHERE "participante_id" = ANY($1::uuid[]) LIMIT 1', [ids]);
-      if (activos.length) throw new ConflictException('Uno de los jugadores ya está disputando una partida');
-      const partidasRepo = gestor.getRepository(PartidaEntity);
-      const partida = await partidasRepo.save(partidasRepo.create({ eventoId, participanteAId: reto.emisorId, participanteBId: reto.destinatarioId, puestoId, videojuegoId, estado: EstadoPartida.EN_CURSO, ganadorId: null, finalizadaEn: null }));
-      await gestor.query('INSERT INTO "partidas_jugadores_activos" ("participante_id", "partida_id") VALUES ($1, $3), ($2, $3)', [reto.emisorId, reto.destinatarioId, partida.id]);
-      reto.estado = EstadoReto.ACEPTADO;
-      reto.partidaId = partida.id;
-      await retosRepo.save(reto);
-      return partida;
+  
+async aceptarReto(
+  eventoId: string,
+  retoId: string,
+  destinatarioUsuarioId: string,
+): Promise<PartidaEntity> {
+  return this.fuenteDatos.transaction(async (gestor) => {
+    // 1. Bloquear primero la edición.
+    const evento = await gestor.getRepository(EventoEntity).findOne({
+      where: { id: eventoId },
+      lock: { mode: 'pessimistic_write' },
     });
-  }
+
+    if (
+      !evento ||
+      evento.estado !== EstadoEvento.EN_CURSO ||
+      Date.now() >= evento.fechaCierreEnfrentamientos.getTime()
+    ) {
+      throw new BadRequestException(
+        'La edición ya no permite iniciar partidas',
+      );
+    }
+
+    // 2. Bloquear el reto.
+    const retosRepo = gestor.getRepository(RetoEntity);
+    const reto = await retosRepo.findOne({
+      where: { id: retoId, eventoId },
+      lock: { mode: 'pessimistic_write' },
+    });
+
+    if (!reto) {
+      throw new NotFoundException('No se ha encontrado el reto');
+    }
+
+    const destinatario = await gestor
+      .getRepository(ParticipanteEntity)
+      .findOne({
+        where: {
+          id: reto.destinatarioId,
+          eventoId,
+          usuarioId: destinatarioUsuarioId,
+        },
+      });
+
+    if (!destinatario) {
+      throw new ForbiddenException(
+        'Solo el destinatario puede aceptar este reto',
+      );
+    }
+
+    if (reto.estado !== EstadoReto.PENDIENTE) {
+      throw new ConflictException('El reto ya no está pendiente');
+    }
+
+    if (reto.caducaEn <= new Date()) {
+      reto.estado = EstadoReto.CADUCADO;
+      await retosRepo.save(reto);
+      throw new BadRequestException(
+        'El plazo de aceptación del reto ha terminado',
+      );
+    }
+
+    // 3. Bloquear ambos participantes.
+    const ids = [reto.emisorId, reto.destinatarioId].sort();
+
+    const participantes = await gestor
+      .getRepository(ParticipanteEntity)
+      .createQueryBuilder('p')
+      .setLock('pessimistic_write')
+      .where(
+        'p.evento_id = :eventoId AND p.id IN (:...ids) AND p.estado = :estado',
+        {
+          eventoId,
+          ids,
+          estado: EstadoParticipante.INSCRITO,
+        },
+      )
+      .getMany();
+
+    if (participantes.length !== 2) {
+      throw new BadRequestException(
+        'Los dos jugadores deben seguir inscritos',
+      );
+    }
+
+    // 4. Comprobar que ninguno está disputando otra partida.
+    const activos = await gestor.query(
+      'SELECT 1 FROM "partidas_jugadores_activos" WHERE "participante_id" = ANY($1::uuid[]) LIMIT 1',
+      [ids],
+    );
+
+    if (activos.length) {
+      throw new ConflictException(
+        'Uno de los jugadores ya está disputando una partida',
+      );
+    }
+
+    // 5. Consultar puestos activos y sus videojuegos compatibles.
+    // No aplicamos FOR UPDATE sobre una consulta con LEFT JOIN.
+    const puestos = await gestor
+      .getRepository(PuestoEntity)
+      .createQueryBuilder('puesto')
+      .leftJoinAndSelect('puesto.videojuegos', 'videojuego')
+      .where('puesto.evento_id = :eventoId', { eventoId })
+      .andWhere('puesto.activo = true')
+      .andWhere('videojuego.activo = true')
+      .orderBy('puesto.codigo', 'ASC')
+      .addOrderBy('videojuego.nombre', 'ASC')
+      .getMany();
+
+    // 6. Consultar los recursos que ya están ocupados.
+    const ocupaciones = await gestor
+      .getRepository(PartidaEntity)
+      .createQueryBuilder('partida')
+      .where('partida.estado = :estado', {
+        estado: EstadoPartida.EN_CURSO,
+      })
+      .andWhere('partida.evento_id = :eventoId', { eventoId })
+      .select(['partida.puestoId', 'partida.videojuegoId'])
+      .getMany();
+
+    const puestosOcupados = new Set(
+      ocupaciones.map((partida) => partida.puestoId),
+    );
+
+    const videojuegosOcupados = new Set(
+      ocupaciones.map((partida) => partida.videojuegoId),
+    );
+
+    // 7. Generar las combinaciones disponibles.
+    const combinaciones = puestos.flatMap((puesto) => {
+      if (puestosOcupados.has(puesto.id)) {
+        return [];
+      }
+
+      return puesto.videojuegos
+        .filter(
+          (juego) =>
+            juego.activo &&
+            !videojuegosOcupados.has(juego.id),
+        )
+        .map((juego) => ({
+          puestoId: puesto.id,
+          videojuegoId: juego.id,
+        }));
+    });
+
+    if (!combinaciones.length) {
+      throw new ConflictException(
+        'No hay puestos ni videojuegos compatibles disponibles',
+      );
+    }
+
+    // 8. Seleccionar una combinación aleatoria.
+    const seleccion =
+      combinaciones[Math.floor(Math.random() * combinaciones.length)];
+
+    // 9. Bloquear los recursos seleccionados.
+    const puestoBloqueado = await gestor
+      .getRepository(PuestoEntity)
+      .createQueryBuilder('puesto')
+      .setLock('pessimistic_write')
+      .where('puesto.id = :puestoId', {
+        puestoId: seleccion.puestoId,
+      })
+      .andWhere('puesto.evento_id = :eventoId', { eventoId })
+      .andWhere('puesto.activo = true')
+      .getOne();
+
+    if (!puestoBloqueado) {
+      throw new ConflictException(
+        'El puesto seleccionado ya no está disponible',
+      );
+    }
+
+    const juego = await gestor
+      .getRepository(VideojuegoEntity)
+      .findOne({
+        where: {
+          id: seleccion.videojuegoId,
+          activo: true,
+        },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+    if (!juego) {
+      throw new ConflictException(
+        'El videojuego seleccionado ya no está disponible',
+      );
+    }
+
+    // 10. Volver a comprobar que el puesto y el videojuego
+    // continúan libres antes de crear la partida.
+    const ocupacionActual = await gestor
+      .getRepository(PartidaEntity)
+      .createQueryBuilder('partida')
+      .where('partida.estado = :estado', {
+        estado: EstadoPartida.EN_CURSO,
+      })
+      .andWhere(
+        '(partida.puesto_id = :puestoId OR partida.videojuego_id = :videojuegoId)',
+        {
+          puestoId: seleccion.puestoId,
+          videojuegoId: seleccion.videojuegoId,
+        },
+      )
+      .getCount();
+
+    if (ocupacionActual) {
+      throw new ConflictException(
+        'El puesto o el videojuego ya está ocupado',
+      );
+    }
+
+    // 11. Crear la partida.
+    const partidasRepo = gestor.getRepository(PartidaEntity);
+
+    const partida = await partidasRepo.save(
+      partidasRepo.create({
+        eventoId,
+        participanteAId: reto.emisorId,
+        participanteBId: reto.destinatarioId,
+        puestoId: seleccion.puestoId,
+        videojuegoId: seleccion.videojuegoId,
+        estado: EstadoPartida.EN_CURSO,
+        ganadorId: null,
+        finalizadaEn: null,
+      }),
+    );
+
+    // 12. Reservar ambos participantes.
+    await gestor.query(
+      'INSERT INTO "partidas_jugadores_activos" ("participante_id", "partida_id") VALUES ($1, $3), ($2, $3)',
+      [reto.emisorId, reto.destinatarioId, partida.id],
+    );
+
+    // 13. Actualizar el reto.
+    reto.estado = EstadoReto.ACEPTADO;
+    reto.partidaId = partida.id;
+
+    await retosRepo.save(reto);
+
+    return partida;
+  });
+}
+
 
   async rechazarReto(eventoId: string, retoId: string, usuarioId: string): Promise<RetoEntity> {
     return this.fuenteDatos.transaction(async (gestor) => {
@@ -122,14 +333,69 @@ export class EnfrentamientosService {
       partida.finalizadaEn = new Date();
       const guardada = await repo.save(partida);
       await gestor.query('DELETE FROM "partidas_jugadores_activos" WHERE "partida_id" = $1', [partida.id]);
-      await this.apuchiCoins.acreditarVictoria(gestor, eventoId, ganadorId, partida.id);
-      return guardada;
-    });
-  }
+      const rivalId = ganadorId === partida.participanteAId ? partida.participanteBId: partida.participanteAId;
 
-  listarPartidas(eventoId: string): Promise<PartidaEntity[]> {
-    return this.partidas.find({ where: { eventoId }, order: { iniciadaEn: 'DESC' } });
-  }
+      const rival = await gestor
+        .getRepository(ParticipanteEntity)
+        .findOne({
+          where: {
+            id: rivalId,
+            eventoId,
+          },
+          relations: {
+            usuario: true,
+          },
+        });
+
+      const videojuego = await gestor
+        .getRepository(VideojuegoEntity)
+        .findOne({
+          where: {
+            id: partida.videojuegoId,
+        },
+      });
+
+      if (!rival || !videojuego) {
+        throw new NotFoundException(
+          'No se pudo obtener la información de la partida',
+        );
+      }
+
+      const descripcion =
+        `Victoria vs. ${rival.usuario.nombreVisible} — ${videojuego.nombre}`;
+
+      await this.apuchiCoins.acreditarVictoria(
+        gestor,
+        eventoId,
+        ganadorId,
+        partida.id,
+        descripcion,
+      );
+        return guardada;
+      });
+    }
+
+    listarPartidas(eventoId: string): Promise<PartidaEntity[]> {
+      return this.partidas.find({
+        where: { eventoId },
+        relations: {
+          participanteA: {
+            usuario: true,
+          },
+          participanteB: {
+            usuario: true,
+          },
+          ganador: {
+            usuario: true,
+          },
+          puesto: true,
+          videojuego: true,
+        },
+        order: {
+          iniciadaEn: 'DESC',
+        },
+      });
+    }
 
   async listarRetosRecibidosPorUsuario(eventoId: string, usuarioId: string): Promise<RetoEntity[]> {
     const participante = await this.fuenteDatos.getRepository(ParticipanteEntity).findOne({ where: { eventoId, usuarioId, estado: EstadoParticipante.INSCRITO } });
@@ -140,4 +406,48 @@ export class EnfrentamientosService {
       }).execute();
     return this.retos.createQueryBuilder('r').where('r.evento_id = :eventoId AND r.destinatario_id = :participanteId AND r.estado = :estado', { eventoId, participanteId: participante.id, estado: EstadoReto.PENDIENTE }).orderBy('r.creado_en', 'ASC').getMany();
   }
+
+  
+async listarDisponibilidadPuestos(eventoId: string) {
+  const puestos = await this.fuenteDatos
+    .getRepository(PuestoEntity)
+    .createQueryBuilder('puesto')
+    .leftJoinAndSelect(
+      'puesto.videojuegos',
+      'videojuego',
+      'videojuego.activo = :juegoActivo',
+      { juegoActivo: true },
+    )
+    .where('puesto.evento_id = :eventoId', { eventoId })
+    .andWhere('puesto.activo = true')
+    .orderBy('puesto.codigo', 'ASC')
+    .getMany();
+
+  const ocupados = await this.partidas
+    .createQueryBuilder('partida')
+    .select('partida.puestoId', 'puestoId')
+    .where('partida.eventoId = :eventoId', { eventoId })
+    .andWhere('partida.estado = :estado', {
+      estado: EstadoPartida.EN_CURSO,
+    })
+    .getRawMany<{ puestoId: string }>();
+
+  const puestosOcupados = new Set(
+    ocupados.map((partida) => partida.puestoId),
+  );
+
+  return puestos.map((puesto) => ({
+    id: puesto.id,
+    codigo: puesto.codigo,
+    descripcion: puesto.descripcion,
+    ocupado: puestosOcupados.has(puesto.id),
+    videojuegos: (puesto.videojuegos ?? []).map((juego) => ({
+      id: juego.id,
+      nombre: juego.nombre,
+      plataforma: juego.plataforma,
+    })),
+  }));
+}
+
+
 }

@@ -1,11 +1,11 @@
 import React from 'react';
-import { ActivityIndicator, View } from 'react-native';
 import { Redirect } from 'expo-router';
+import { Cargando, Pantalla } from '../componentes/ui';
 import { useAuth } from '../contextos/AuthContext';
-import { tema } from '../constantes/tema';
 
+/** Punto de entrada: espera a recuperar la sesión y deriva a la zona correcta. */
 export default function Inicio() {
   const { usuario, cargando } = useAuth();
-  if (cargando) return <View style={{ flex: 1, backgroundColor: tema.colores.fondo, justifyContent: 'center' }}><ActivityIndicator color={tema.colores.acento} /></View>;
+  if (cargando) return <Pantalla sinDesplazamiento><Cargando texto="Preparando APUCHITORNEO…" /></Pantalla>;
   return <Redirect href={usuario ? '/(tabs)' : '/(auth)/acceso'} />;
 }

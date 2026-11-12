@@ -1,14 +1,39 @@
-export type RolUsuario='PARTICIPANTE'|'ANFITRION'|'ADMINISTRADOR';
-export type EstadoEvento='BORRADOR'|'EN_CURSO'|'PERIODO_ADICIONAL'|'FINALIZADO';
-export interface Usuario{id:string;email:string;nombreVisible:string;rol:RolUsuario}
-export interface Sesion{tipo:'Bearer';tokenAcceso:string;usuario:Usuario}
-export interface Evento{id:string;anfitrionId:string|null;fechaInicio:string;fechaCierreEnfrentamientos:string;duracionPeriodoAdicionalMinutos:number;premio:string;estado:EstadoEvento;orlaCerradaEn:string|null;anfitrion?:{id:string;nombreVisible:string}}
-export interface Participante{id:string;eventoId:string;usuarioId:string;estado:string;saldoApuchiCoins:number;inscritoEn:string;usuario?:Usuario}
-export interface Disponible{id:string;nombreVisible:string}
-export interface Videojuego{id:string;nombre:string;plataforma?:string|null;activo:boolean}
-export interface Puesto{id:string;codigo:string;descripcion?:string|null;videojuegos?:Videojuego[]}
-export interface Reto{id:string;emisorId:string;destinatarioId:string;estado:string;caducaEn:string;emisor?:{usuario?:Usuario}}
-export interface Partida{id:string;participanteAId:string;participanteBId:string;puestoId:string;videojuegoId:string;estado:string;ganadorId:string|null;iniciadaEn:string;participanteA?:Participante;participanteB?:Participante}
-export interface Movimiento{id:string;cantidad:number;motivo:string;creadoEn:string}
-export interface Cartera{cartera:number;orla:number}
-export interface Sorteo{eventoId:string;participanteGanadorId:string;premio:string;realizadoEn:string}
+/** Roles que devuelve y aplica el backend de APUCHITORNEO. */
+export type RolUsuario = 'PARTICIPANTE' | 'ANFITRION' | 'ADMINISTRADOR';
+/** Estados de una edición conocidos por el cliente. */
+export type EstadoEvento = 'BORRADOR' | 'EN_CURSO' | 'PERIODO_ADICIONAL' | 'FINALIZADO';
+
+export interface Usuario { id: string; email: string; nombreVisible: string; rol: RolUsuario }
+export interface Sesion { tipo: 'Bearer'; tokenAcceso: string; usuario: Usuario }
+export interface Evento { id: string; anfitrionId: string | null; fechaInicio: string; fechaCierreEnfrentamientos: string; duracionPeriodoAdicionalMinutos: number; premio: string; estado: EstadoEvento; orlaCerradaEn: string | null; anfitrion?: { id: string; nombreVisible: string } }
+export interface Participante { id: string; eventoId: string; usuarioId: string; estado: string; saldoApuchiCoins: number; inscritoEn: string; usuario?: Usuario }
+export interface Disponible { id: string; nombreVisible: string }
+export interface Videojuego { id: string; nombre: string; plataforma?: string | null; activo: boolean }
+export interface Puesto { id: string; codigo: string; descripcion?: string | null; videojuegos?: Videojuego[] }
+export interface Reto { id: string; emisorId: string; destinatarioId: string; estado: string; caducaEn: string; emisor?: { usuario?: Usuario } }
+
+export interface Partida {
+  id: string;
+  participanteAId: string;
+  participanteBId: string;
+  puestoId: string;
+  videojuegoId: string;
+  estado: string;
+  ganadorId: string | null;
+  iniciadaEn: string;
+  participanteA?: Participante;
+  participanteB?: Participante;
+  ganador?: Participante | null;
+  puesto?: Puesto;
+  videojuego?: Videojuego;
+}
+
+export interface Movimiento {
+  id: string;
+  cantidad: number;
+  motivo: string;
+  descripcion?: string | null;
+  creadoEn: string;
+}
+export interface Cartera { cartera: number; orla: number }
+export interface Sorteo { eventoId: string; participanteGanadorId: string; premio: string; realizadoEn: string }

@@ -23,4 +23,7 @@ export class MovimientoApuchiCoinEntity {
 
   @CreateDateColumn({ type: 'timestamptz', name: 'creado_en' })
   creadoEn: Date;
+
+  @Column({ type: 'varchar', length: 180, nullable: true })
+descripcion: string | null;
 }

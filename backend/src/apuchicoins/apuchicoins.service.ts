@@ -15,17 +15,53 @@ export class ApuchiCoinsService {
     private readonly participantes: Repository<ParticipanteEntity>,
   ) {}
 
-  async acreditarVictoria(gestor: EntityManager, eventoId: string, participanteId: string, partidaId: string): Promise<void> {
+  async acreditarVictoria(
+    gestor: EntityManager,
+    eventoId: string,
+    participanteId: string,
+    partidaId: string,
+    descripcion: string,
+  ): Promise<void> {
     const movimientos = gestor.getRepository(MovimientoApuchiCoinEntity);
-    const existente = await movimientos.findOne({ where: { partidaId, motivo: 'VICTORIA_PARTIDA' } });
+
+    const existente = await movimientos.findOne({
+      where: {
+        partidaId,
+        motivo: 'VICTORIA_PARTIDA',
+      },
+    });
+
     if (existente) return;
-    const resultado = await gestor.getRepository(ParticipanteEntity).createQueryBuilder()
+
+    const resultado = await gestor
+      .getRepository(ParticipanteEntity)
+      .createQueryBuilder()
       .update(ParticipanteEntity)
-      .set({ saldoApuchiCoins: () => '"saldo_apuchicoins" + 1' })
-      .where('id = :participanteId AND evento_id = :eventoId', { participanteId, eventoId })
+      .set({
+        saldoApuchiCoins: () => '"saldo_apuchicoins" + 1',
+      })
+      .where(
+        'id = :participanteId AND evento_id = :eventoId',
+        { participanteId, eventoId },
+      )
       .execute();
-    if (!resultado.affected) throw new NotFoundException('No se pudo actualizar el saldo del ganador');
-    await movimientos.save(movimientos.create({ eventoId, participanteId, partidaId, cantidad: 1, motivo: 'VICTORIA_PARTIDA' }));
+
+    if (!resultado.affected) {
+      throw new NotFoundException(
+        'No se pudo actualizar el saldo del ganador',
+      );
+    }
+
+    await movimientos.save(
+      movimientos.create({
+        eventoId,
+        participanteId,
+        partidaId,
+        cantidad: 1,
+        motivo: 'VICTORIA_PARTIDA',
+        descripcion,
+      }),
+    );
   }
 
   async consultarSaldo(eventoId: string, usuarioId: string): Promise<{ saldo: number }> {

@@ -5,6 +5,7 @@ import { tema } from '../../../constantes/tema';
 /** Navegación apilada dentro de una edición, con cabecera coherente en todos sus módulos. */
 export default function Layout() {
   return <Stack screenOptions={{
+    headerShown: false,
     headerStyle: { backgroundColor: tema.colores.fondo },
     headerTintColor: tema.colores.texto,
     headerTitleStyle: { fontFamily: 'Rajdhani_700Bold', fontSize: 21 },

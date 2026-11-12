@@ -1,11 +1,13 @@
 import React from 'react';
-import { Stack } from 'expo-router';
+import { router, Stack } from 'expo-router';
+import { Pressable } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { tema } from '../../../constantes/tema';
 
 /** Navegación apilada dentro de una edición, con cabecera coherente en todos sus módulos. */
 export default function Layout() {
   return <Stack screenOptions={{
-    headerShown: false,
+    headerShown: true,
     headerStyle: { backgroundColor: tema.colores.fondo },
     headerTintColor: tema.colores.texto,
     headerTitleStyle: { fontFamily: 'Rajdhani_700Bold', fontSize: 21 },
@@ -13,7 +15,14 @@ export default function Layout() {
     contentStyle: { backgroundColor: tema.colores.fondo },
     animation: 'slide_from_right',
   }}>
-    <Stack.Screen name="index" options={{ title: 'Edición' }} />
+    <Stack.Screen name="index" options={{
+      title: 'Edición',
+      headerLeft: () => (
+        <Pressable accessibilityRole="button" accessibilityLabel="Volver a torneos" onPress={() => router.back()} hitSlop={12} style={{ paddingRight: 18 }}>
+          <MaterialCommunityIcons name="arrow-left" size={25} color={tema.colores.texto} />
+        </Pressable>
+      ),
+    }} />
     <Stack.Screen name="retos" options={{ title: 'Retos' }} />
     <Stack.Screen name="partidas" options={{ title: 'Partidas' }} />
     <Stack.Screen name="participantes" options={{ title: 'Participantes' }} />

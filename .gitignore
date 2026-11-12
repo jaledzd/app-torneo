@@ -1,48 +1,92 @@
-# Dependencias
+# ==========================================
+# DEPENDENCIAS
+# ==========================================
 node_modules/
 **/node_modules/
 
-# Archivos generados
+# ==========================================
+# ARCHIVOS GENERADOS
+# ==========================================
 dist/
 build/
 web-build/
-.expo/
-.next/
 coverage/
+.next/
+.expo/
+.expo-shared/
 
-# Variables de entorno y credenciales
+# ==========================================
+# EXPO / REACT NATIVE
+# ==========================================
+*.jks
+*.keystore
+*.p8
+*.p12
+*.mobileprovision
+*.orig.*
+ios/
+android/
+
+# ==========================================
+# VARIABLES DE ENTORNO Y CREDENCIALES
+# ==========================================
 .env
 .env.*
 !.env.example
 !.env.example.*
+
 *.pem
 *.key
 
-# Archivos de configuración local
+# ==========================================
+# CONFIGURACIÓN LOCAL
+# ==========================================
 *.local
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# Registros
+# ==========================================
+# REGISTROS
+# ==========================================
 *.log
 npm-debug.log*
 yarn-debug.log*
 pnpm-debug.log*
 
-# Editores
+# ==========================================
+# EDITORES
+# ==========================================
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# Archivos temporales
+# ==========================================
+# ARCHIVOS TEMPORALES Y CACHÉ
+# ==========================================
 .tmp/
 temp/
 .cache/
+*.tsbuildinfo
 
-# Datos locales y persistencia
+# ==========================================
+# DATOS LOCALES Y PERSISTENCIA
+# ==========================================
 backend/torneos.json
 backend/torneos.local.json
 
-# Archivos de sistema
+# ==========================================
+# FRONTEND: ARCHIVOS LOCALES
+# ==========================================
+frontend/.expo/
+frontend/web-build/
+frontend/dist/
+frontend/build/
+
+# ==========================================
+# SISTEMA OPERATIVO
+# ==========================================
+.DS_Store
+Thumbs.db
 desktop.ini

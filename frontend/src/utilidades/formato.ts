@@ -1,0 +1,3 @@
+export const fecha=(v?:string|null)=>v?new Intl.DateTimeFormat('es-ES',{dateStyle:'medium',timeStyle:'short'}).format(new Date(v)):'Sin fecha';
+export const estado=(v:string)=>({BORRADOR:'Configuración',EN_CURSO:'En curso',PERIODO_ADICIONAL:'Periodo adicional',FINALIZADO:'Finalizado',PENDIENTE:'Pendiente',ACEPTADO:'Aceptado',RECHAZADO:'Rechazado',CADUCADO:'Caducado'}[v]||v.replaceAll('_',' '));
+export const errorTexto=(e:unknown)=>e instanceof Error?e.message:'Se ha producido un error inesperado.';

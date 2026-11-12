@@ -1,0 +1,1 @@
+export const tema={colores:{fondo:'#0B1020',superficie:'#141C2F',elevada:'#1B2740',borde:'#2A3854',texto:'#F4F7FC',secundario:'#A7B4CA',primario:'#8B5CF6',acento:'#22D3EE',correcto:'#34D399',error:'#FB7185',aviso:'#FBBF24'},radio:18} as const;

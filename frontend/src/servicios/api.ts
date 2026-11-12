@@ -1,0 +1,6 @@
+import {almacenamiento} from './almacenamiento';
+const BASE=(process.env.EXPO_PUBLIC_API_URL||'http://localhost:3000').replace(/\/$/,'');
+export class ErrorApi extends Error{constructor(message:string,public status:number){super(message)}}
+type Opciones={method?:string;body?:unknown;auth?:boolean};
+export async function peticion<T>(ruta:string,{method='GET',body,auth=true}:Opciones={}):Promise<T>{const headers:Record<string,string>={Accept:'application/json'};if(body!==undefined)headers['Content-Type']='application/json';if(auth){const token=await almacenamiento.obtenerToken();if(token)headers.Authorization=`Bearer ${token}`}let r:Response;try{r=await fetch(BASE+ruta,{method,headers,body:body===undefined?undefined:JSON.stringify(body)})}catch{throw new ErrorApi('No se pudo conectar con el backend. Comprueba la URL y que el servidor esté iniciado.',0)}const t=await r.text();let data:any=null;try{data=t?JSON.parse(t):null}catch{data=t}if(!r.ok){const m=data?.message;throw new ErrorApi(Array.isArray(m)?m.join('\n'):m||data?.error||'Error en la petición.',r.status)}return data as T}
+export const api={get:<T>(p:string)=>peticion<T>(p),post:<T>(p:string,b?:unknown)=>peticion<T>(p,{method:'POST',body:b}),patch:<T>(p:string,b:unknown)=>peticion<T>(p,{method:'PATCH',body:b}),delete:<T>(p:string)=>peticion<T>(p,{method:'DELETE'})};

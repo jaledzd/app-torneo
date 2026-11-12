@@ -21,7 +21,7 @@ import { errorTexto, fecha, estado } from '../../../utilidades/formato';
 import { useAuth } from '../../../contextos/AuthContext';
 import { tema } from '../../../constantes/tema';
 
-type SeccionPanel = 'resumen' | 'competicion' | 'participantes';
+type SeccionPanel = 'resumen' | 'competicion';
 type MenuRapido = 'monedero' | 'orla' | null;
 
 /** Portada de la edición y panel de navegación del participante/anfitrión. */
@@ -195,14 +195,6 @@ export default function Detalle() {
           secundario={seccionActiva !== 'competicion'}
           onPress={() => setSeccionActiva('competicion')}
         />
-        <Boton
-          titulo="Participantes"
-          icono="account-group"
-          compacto
-          secundario={seccionActiva !== 'participantes'}
-          deshabilitado={!anfitrion}
-          onPress={() => setSeccionActiva('participantes')}
-        />
       </View>
 
       {seccionActiva === 'resumen' ? (
@@ -279,24 +271,6 @@ export default function Detalle() {
             icono="controller-classic"
             onPress={() => abrirModulo('/evento/' + id + '/partidas')}
           />
-        </>
-      ) : null}
-
-      {seccionActiva === 'participantes' ? (
-        <>
-          <Seccion titulo="Participantes" detalle="Consulta los jugadores inscritos en esta edición." />
-          {anfitrion ? (
-            <ModuloGrande
-              nombre="Lista de participantes"
-              detalle="Consulta los inscritos y su información."
-              icono="account-group"
-              onPress={() => abrirModulo('/evento/' + id + '/participantes')}
-            />
-          ) : (
-            <Tarjeta>
-              <Secundario>La lista completa de participantes está disponible para el anfitrión.</Secundario>
-            </Tarjeta>
-          )}
         </>
       ) : null}
 

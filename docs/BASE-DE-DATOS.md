@@ -30,7 +30,9 @@ Restricciones y reglas:
 
 ## Migraciones
 
-Las migraciones se ejecutan en orden cronológico. Las migraciones `1760000008000` y `1760000009000` añaden, respectivamente, el responsable de edición y el instante de cierre de orla sin reescribir el historial anterior. Las migraciones `1760000010000` y `1760000011000` refuerzan las relaciones entre registros de una misma edición y evitan duplicados de videojuegos por diferencias de mayúsculas/minúsculas.
+Las migraciones se ejecutan en orden cronológico. Las migraciones `1760000008000` y `1760000009000` añaden, respectivamente, el responsable de edición y el instante de cierre de orla sin reescribir el historial anterior. Las migraciones `1760000010000` y `1760000011000` refuerzan las relaciones entre registros de una misma edición y evitan duplicados de videojuegos por diferencias de mayúsculas/minúsculas. La migración `1760000012000` liga cada partida a un puesto de su edición y a un videojuego compatible, y conserva una copia del premio en el resultado del sorteo. La migración `1760000013000` elimina la restricción exacta redundante del nombre del videojuego, que ya queda cubierta por el índice funcional.
+
+Antes de aplicar `1760000011000` en una base con datos, hay que comprobar que no existen videojuegos cuyos nombres coincidan al convertirlos a minúsculas; en caso contrario, la creación del índice funcional fallará y se requiere resolver esos datos explícitamente.
 
 Desde `backend/`:
 

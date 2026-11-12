@@ -134,6 +134,10 @@ export class EnfrentamientosService {
   async listarRetosRecibidosPorUsuario(eventoId: string, usuarioId: string): Promise<RetoEntity[]> {
     const participante = await this.fuenteDatos.getRepository(ParticipanteEntity).findOne({ where: { eventoId, usuarioId, estado: EstadoParticipante.INSCRITO } });
     if (!participante) throw new NotFoundException('No estás inscrito en esta edición');
-    return this.retos.createQueryBuilder('r').where('r.evento_id = :eventoId AND r.destinatario_id = :participanteId AND r.estado = :estado AND r.caduca_en > now()', { eventoId, participanteId: participante.id, estado: EstadoReto.PENDIENTE }).orderBy('r.creado_en', 'ASC').getMany();
+    await this.retos.createQueryBuilder().update(RetoEntity).set({ estado: EstadoReto.CADUCADO })
+      .where('evento_id = :eventoId AND destinatario_id = :participanteId AND estado = :estado AND caduca_en <= now()', {
+        eventoId, participanteId: participante.id, estado: EstadoReto.PENDIENTE,
+      }).execute();
+    return this.retos.createQueryBuilder('r').where('r.evento_id = :eventoId AND r.destinatario_id = :participanteId AND r.estado = :estado', { eventoId, participanteId: participante.id, estado: EstadoReto.PENDIENTE }).orderBy('r.creado_en', 'ASC').getMany();
   }
 }

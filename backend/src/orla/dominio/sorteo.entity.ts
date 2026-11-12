@@ -7,5 +7,6 @@ export class SorteoEntity {
   @Column({ type: 'uuid', name: 'evento_id' }) eventoId: string;
   @Column({ type: 'uuid', name: 'papeleta_ganadora_id' }) papeletaGanadoraId: string;
   @Column({ type: 'uuid', name: 'participante_ganador_id' }) participanteGanadorId: string;
+  @Column({ type: 'varchar', length: 250 }) premio: string;
   @CreateDateColumn({ type: 'timestamptz', name: 'realizado_en' }) realizadoEn: Date;
 }

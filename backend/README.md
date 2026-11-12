@@ -34,7 +34,7 @@ Implementado en la rama `develop`:
 
 - Node.js **22.22.3 o superior**.
 - npm.
-- Docker Desktop recomendado para PostgreSQL local.
+- PostgreSQL instalado localmente. El archivo Docker Compose existente es una alternativa opcional para desarrollo local.
 
 ## Preparar entorno local
 
@@ -46,7 +46,7 @@ Copy-Item .env.example .env
 
 Los valores de ejemplo son únicamente para desarrollo local. No uses esas credenciales en un entorno compartido o productivo.
 
-Arranca PostgreSQL:
+Si eliges usar Docker Compose para PostgreSQL local:
 
 ```powershell
 docker compose up -d postgres

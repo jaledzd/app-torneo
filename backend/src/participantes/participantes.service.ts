@@ -43,14 +43,53 @@ export class ParticipantesService {
   }
 
   async listar(eventoId: string, actor: UsuarioAutenticado): Promise<ParticipanteEntity[]> {
-    await this.autorizarEdicion(eventoId, actor);
     const evento = await this.eventos.findOne({ where: { id: eventoId } });
     if (!evento) throw new NotFoundException('No se ha encontrado la edición');
+    this.autorizar(evento, actor);
     return this.participantes.find({
       where: { eventoId, estado: EstadoParticipante.INSCRITO },
       relations: { usuario: true },
       order: { inscritoEn: 'ASC' },
     });
+  }
+
+  async miInscripcion(eventoId: string, actor: UsuarioAutenticado): Promise<ParticipanteEntity> {
+    const participante = await this.participantes.findOne({
+      where: { eventoId, usuarioId: actor.id, estado: EstadoParticipante.INSCRITO },
+    });
+    if (!participante) throw new NotFoundException('No estás inscrito en esta edición');
+    return participante;
+  }
+
+  async listarDisponibles(eventoId: string, actor: UsuarioAutenticado): Promise<Array<{ id: string; nombreVisible: string }>> {
+    const inscrito = await this.participantes.findOne({
+      where: { eventoId, usuarioId: actor.id, estado: EstadoParticipante.INSCRITO },
+    });
+    if (!inscrito) throw new ForbiddenException('Debes estar inscrito para consultar jugadores disponibles');
+
+    return this.participantes.createQueryBuilder('participante')
+      .innerJoin('participante.usuario', 'usuario')
+      .select(['participante.id', 'usuario.id', 'usuario.nombreVisible'])
+      .where('participante.eventoId = :eventoId', { eventoId })
+      .andWhere('participante.estado = :estado', { estado: EstadoParticipante.INSCRITO })
+      .andWhere('participante.usuarioId != :usuarioId', { usuarioId: actor.id })
+      .andWhere(`NOT EXISTS (
+        SELECT 1 FROM "partidas_jugadores_activos" activos
+        WHERE activos."participante_id" = participante.id
+      )`)
+      .andWhere(`NOT EXISTS (
+        SELECT 1 FROM "retos" reto
+        WHERE reto."evento_id" = :eventoId
+          AND reto."destinatario_id" = participante.id
+          AND reto."estado" = 'PENDIENTE'
+          AND reto."caduca_en" > now()
+      )`)
+      .orderBy('usuario.nombreVisible', 'ASC')
+      .getMany()
+      .then((participantes) => participantes.map((participante) => ({
+        id: participante.id,
+        nombreVisible: participante.usuario.nombreVisible,
+      })));
   }
 
   async retirar(eventoId: string, participanteId: string, actor: UsuarioAutenticado): Promise<ParticipanteEntity> {

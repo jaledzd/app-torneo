@@ -15,6 +15,16 @@ export class ParticipantesController {
     return this.servicio.inscribir(eventoId, peticion.user.id);
   }
 
+  @Get('yo')
+  miInscripcion(@Param('eventoId', new ParseUUIDPipe()) eventoId: string, @Req() peticion: Request & { user: UsuarioAutenticado }) {
+    return this.servicio.miInscripcion(eventoId, peticion.user);
+  }
+
+  @Get('disponibles')
+  disponibles(@Param('eventoId', new ParseUUIDPipe()) eventoId: string, @Req() peticion: Request & { user: UsuarioAutenticado }) {
+    return this.servicio.listarDisponibles(eventoId, peticion.user);
+  }
+
   @Roles(RolUsuario.ANFITRION, RolUsuario.ADMINISTRADOR)
   @Post()
   inscribir(@Param('eventoId', new ParseUUIDPipe()) eventoId: string, @Body() datos: InscribirParticipanteDto, @Req() peticion: Request & { user: UsuarioAutenticado }) {

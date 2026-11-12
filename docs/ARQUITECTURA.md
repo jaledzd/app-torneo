@@ -51,7 +51,11 @@ La economía también requiere operaciones atómicas: actualizar saldo y registr
 
 ## 6. Tiempo real
 
-Se necesita comunicar cambios de retos, partidas y el resultado del sorteo a los clientes conectados. La tecnología y el mecanismo de autorización de conexiones se concretarán antes de implementar esta capacidad.
+El canal en tiempo real todavía no está implementado. Para la primera integración con Expo, se recomienda mantener HTTP como fuente de verdad y permitir actualización periódica mediante consultas, con `ETag` o cursores si el volumen lo requiere. Esto evita introducir conexiones persistentes en la API NestJS antes de tener definidos los eventos y permisos.
+
+Cuando se necesiten notificaciones inmediatas, la opción alineada con el despliegue previsto es API Gateway WebSocket con funciones Lambda para conectar, desconectar y publicar, y un registro independiente de conexiones (por ejemplo, DynamoDB). Las notificaciones deben derivarse de cambios ya confirmados en PostgreSQL; una tabla outbox transaccional evitaría publicar un evento que luego se revierta. El cliente debe poder recuperar el estado por HTTP si pierde una notificación. No se recomienda incorporar Socket.IO al proceso HTTP de Lambda.
+
+Referencias oficiales: [API Gateway WebSocket](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-websocket-api-overview.html), [gestión de conexiones WebSocket](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-how-to-call-websocket-api-connections.html).
 
 ## 7. Arquitectura de despliegue objetivo
 
@@ -64,7 +68,9 @@ Se estudiará una solución AWS con:
 - VPC y grupos de seguridad para aislar la base de datos.
 - IAM con mínimo privilegio.
 - Secrets Manager para credenciales y secretos.
-- Terraform para infraestructura como código.
+- Terraform como opción de infraestructura como código en una fase posterior.
+
+En Lambda, las conexiones breves y concurrentes a PostgreSQL deben evaluarse con RDS Proxy para amortiguar la creación de conexiones. La configuración actual crea una conexión TypeORM al iniciar NestJS y aún no implementa un adaptador de arranque/parada Lambda ni carga de secretos desde Secrets Manager; esos cambios pertenecen a la fase de despliegue. Referencia: [Lambda y RDS](https://docs.aws.amazon.com/lambda/latest/dg/services-rds.html).
 
 No hay que interpretar esta lista como recursos ya creados. El despliegue se realizará después de probar la aplicación localmente y con autorización expresa.
 

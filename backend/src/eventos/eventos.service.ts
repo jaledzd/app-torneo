@@ -50,11 +50,27 @@ export class EventosService {
   }
 
   listar(): Promise<EventoEntity[]> {
-    return this.eventosRepository.find({ relations: { anfitrion: true }, order: { creadoEn: 'DESC' } });
+    return this.eventosRepository.createQueryBuilder('evento')
+      .leftJoin('evento.anfitrion', 'anfitrion')
+      .select([
+        'evento.id', 'evento.anfitrionId', 'evento.fechaInicio',
+        'evento.fechaCierreEnfrentamientos', 'evento.duracionPeriodoAdicionalMinutos',
+        'evento.premio', 'evento.estado', 'evento.orlaCerradaEn', 'evento.creadoEn',
+        'anfitrion.id', 'anfitrion.nombreVisible',
+      ])
+      .orderBy('evento.creadoEn', 'DESC').getMany();
   }
 
   async obtenerPorId(id: string): Promise<EventoEntity> {
-    const evento = await this.eventosRepository.findOne({ where: { id }, relations: { anfitrion: true } });
+    const evento = await this.eventosRepository.createQueryBuilder('evento')
+      .leftJoin('evento.anfitrion', 'anfitrion')
+      .select([
+        'evento.id', 'evento.anfitrionId', 'evento.fechaInicio',
+        'evento.fechaCierreEnfrentamientos', 'evento.duracionPeriodoAdicionalMinutos',
+        'evento.premio', 'evento.estado', 'evento.orlaCerradaEn', 'evento.creadoEn',
+        'anfitrion.id', 'anfitrion.nombreVisible',
+      ])
+      .where('evento.id = :id', { id }).getOne();
     if (!evento) throw new NotFoundException('No se ha encontrado la edición');
     return evento;
   }

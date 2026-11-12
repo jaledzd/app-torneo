@@ -118,7 +118,7 @@ export class OrlaService {
       const ganadora = papeletas[randomInt(papeletas.length)];
       ganadora.estado = EstadoPapeleta.GANADORA;
       await repo.save(ganadora);
-      const sorteo = await sorteos.save(sorteos.create({ eventoId, papeletaGanadoraId: ganadora.id, participanteGanadorId: ganadora.participanteId }));
+      const sorteo = await sorteos.save(sorteos.create({ eventoId, papeletaGanadoraId: ganadora.id, participanteGanadorId: ganadora.participanteId, premio: evento.premio }));
       evento.estado = EstadoEvento.FINALIZADO;
       await eventos.save(evento);
       return sorteo;

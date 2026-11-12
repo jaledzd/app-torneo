@@ -42,6 +42,8 @@ Ejemplo de creación:
 ## Participantes
 
 - `POST /eventos/:eventoId/participantes/inscribirme`: inscripción de la cuenta autenticada.
+- `GET /eventos/:eventoId/participantes/yo`: inscripción de la cuenta autenticada en esa edición.
+- `GET /eventos/:eventoId/participantes/disponibles`: jugadores inscritos sin partida activa ni reto entrante pendiente; requiere estar inscrito.
 - `POST /eventos/:eventoId/participantes`: anfitrión/administrador inscribe una cuenta indicando `usuarioId`.
 - `GET /eventos/:eventoId/participantes`: consulta de inscritos.
 - `DELETE /eventos/:eventoId/participantes/:participanteId`: retirada de una inscripción. No se puede retirar a alguien con partida activa ni modificar inscripciones de una edición finalizada.
@@ -78,6 +80,8 @@ Los retos caducan en cinco minutos por defecto (configurable mediante `RETO_CADU
 - `POST /eventos/:eventoId/orla/cerrar`: responsable/administrador cierra la recepción de papeletas. Puede hacerlo antes de finalizar el periodo adicional si ya no quedan partidas activas ni papeletas pendientes en las carteras; si el periodo ha vencido, puede cerrar aunque queden partidas, pero el sorteo seguirá bloqueado hasta que terminen.
 - `POST /eventos/:eventoId/orla/sorteo`: responsable/administrador; exige orla cerrada, al menos una papeleta depositada y ninguna partida activa.
 - `GET /eventos/:eventoId/orla/sorteo`: resultado persistido.
+
+El resultado incluye `eventoId`, la papeleta ganadora, el participante ganador, una copia del premio vigente al sortear y `realizadoEn`.
 
 La duración máxima de la orla se calcula desde la hora de cierre de enfrentamientos más los minutos de periodo adicional. El anfitrión puede cerrar antes de ese límite cuando ya no hay partidas activas. Una vez cerrada, no se admiten depósitos ni nuevas emisiones. El sorteo es único por edición y finaliza el evento.
 

@@ -1,9 +1,8 @@
-import { Column, CreateDateColumn, Entity, Index, JoinTable, ManyToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, JoinTable, ManyToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { PuestoEntity } from '../../puestos/dominio/puesto.entity';
 
 /** Catálogo de videojuegos que pueden utilizarse en el torneo. */
 @Entity({ name: 'videojuegos' })
-@Index('UQ_videojuegos_nombre', ['nombre'], { unique: true })
 export class VideojuegoEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;

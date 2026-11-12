@@ -2,7 +2,7 @@
 
 Aplicación móvil y backend para gestionar un torneo presencial de videojuegos: ediciones, participantes, retos, partidas, puestos de juego, ApuchiCoins, papeletas, orla y sorteo final.
 
-> **Estado actual:** backend en construcción. Ya se ha incorporado la configuración inicial de PostgreSQL/TypeORM, la entidad y migración de eventos, endpoints básicos de gestión de ediciones y pruebas iniciales. La ejecución de build y pruebas queda pendiente de validarse en CI. Expo y el despliegue AWS siguen pendientes.
+> **Estado actual:** backend NestJS y aplicación móvil Expo están implementados en `backend/` y `frontend/`. Esta revisión no ha ejecutado instalaciones, compilaciones ni pruebas. La integración en un dispositivo y las validaciones quedan pendientes.
 
 ## Índice
 
@@ -73,7 +73,7 @@ El sorteo puede ejecutarse antes de que venza el periodo adicional si el anfitri
 | API | API REST | En desarrollo |
 | Base de datos | PostgreSQL | Configuración inicial añadida; falta validar conexión y migraciones |
 | ORM | TypeORM | Configuración inicial añadida |
-| Aplicación móvil | Expo / React Native | Pendiente |
+| Aplicación móvil | Expo / React Native | Implementación inicial en `frontend/`; validación pendiente |
 | Tiempo real | WebSocket o mecanismo equivalente | Pendiente de diseño |
 | Infraestructura | AWS Serverless | Fase posterior |
 | Infraestructura como código | Terraform | Fase posterior |
@@ -128,31 +128,34 @@ app-torneo/
 │   ├── ARQUITECTURA.md
 │   ├── API-BACKEND.md
 │   └── BASE-DE-DATOS.md
+├── frontend/
+│   ├── App.tsx
+│   ├── app.json
+│   ├── package.json
+│   └── src/
+│       ├── api.ts
+│       └── types.ts
 └── README.md
 ~~~
 
-La estructura se ampliará cuando se implementen nuevos módulos. Este árbol describe los archivos observados, no todos los que existirán al finalizar.
+El repositorio incluye los módulos del backend en `backend/src/` y la aplicación Expo en `frontend/`. Este árbol destaca el punto de entrada; consulta cada README para los comandos locales.
 
 ## Estado de implementación
 
 ### Backend
 - [x] Proyecto NestJS inicializado.
-- [x] Endpoint de salud GET /salud.
-- [x] ValidationPipe global con whitelist, forbidNonWhitelisted y transform.
-- [x] Entidad, DTO y enum iniciales de eventos.
-- [x] Servicio y controlador inicial de eventos.
-- [x] Pruebas unitarias y HTTP iniciales escritas (pendiente ejecutarlas y validar resultados).
-- [x] Configuración inicial de PostgreSQL y TypeORM.
-- [x] Migración inicial de la tabla eventos.
-- [ ] Sincronizar package-lock.json y validar build/pruebas en CI.
-- [ ] Participantes, retos, partidas, economía y sorteo.
-- [ ] Autenticación y autorización.
+- [x] Autenticación, autorización y gestión de usuarios.
+- [x] Ediciones, participantes, videojuegos, puestos, retos y partidas.
+- [x] ApuchiCoins, papeletas, orla y sorteo.
+- [x] PostgreSQL, TypeORM y migraciones.
+- [ ] Validar build, pruebas y migraciones con el entorno local.
 - [ ] Automatizar transiciones temporales de fase.
-- [ ] Comunicación en tiempo real.
+- [ ] Notificaciones en tiempo real.
 
 ### Aplicación móvil e infraestructura
-- [ ] Aplicación Expo.
-- [ ] Integración móvil con la API.
+- [x] Aplicación Expo para Android e iOS.
+- [x] Integración móvil con las rutas disponibles de la API.
+- [ ] Instalar dependencias, sincronizar lockfile y validar en simulador/dispositivo.
 - [ ] Pruebas de integración.
 - [ ] Infraestructura AWS.
 - [ ] Despliegue automatizado y observabilidad.
@@ -160,6 +163,12 @@ La estructura se ampliará cuando se implementen nuevos módulos. Este árbol de
 Las tareas solo se marcarán como terminadas cuando exista implementación comprobada.
 
 ## Puesta en marcha
+
+### Aplicación móvil
+
+Consulta [frontend/README.md](frontend/README.md) para instalar dependencias, configurar `EXPO_PUBLIC_API_URL` y arrancar Expo. En un teléfono físico, configura la dirección LAN del ordenador; `localhost` solo sirve desde el mismo dispositivo.
+
+### Backend
 
 Desde la carpeta backend, copia `.env.example` a `.env`, inicia PostgreSQL, instala dependencias y aplica la migración inicial:
 
@@ -195,15 +204,14 @@ npm run test:cov
 npm run lint
 ~~~
 
-> **Incidencia detectada en la revisión:** CrearEventoDto importa decoradores de class-validator, pero backend/package.json todavía no declara class-validator ni class-transformer. Hay que corregir y verificar las dependencias antes de considerar reproducible una instalación limpia.
-
 ## Documentación y ruta de estudio
 
 - [Requisitos funcionales](docs/REQUISITOS-FUNCIONALES.md)
 - [API del backend](docs/API-BACKEND.md)
-- [Base de datos](docs/BASE-DE-DATOS.md)\n- [API del backend](docs/API-BACKEND.md)\n- [Base de datos](docs/BASE-DE-DATOS.md)\n- [API del backend](docs/API-BACKEND.md)\n- [Base de datos](docs/BASE-DE-DATOS.md)\n- [API del backend](docs/API-BACKEND.md)\n- [Base de datos](docs/BASE-DE-DATOS.md)
+- [Base de datos](docs/BASE-DE-DATOS.md)
 - [Arquitectura y decisiones técnicas](docs/ARQUITECTURA.md)
 - [Documentación específica del backend](backend/README.md)
+- [Aplicación móvil](frontend/README.md)
 
 La documentación ampliada se organizará en docs/ y se actualizará junto con el código:
 

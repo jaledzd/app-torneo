@@ -17,6 +17,21 @@ export class OrlaController {
     return this.servicio.emitir(eventoId, datos.participanteId, datos.cantidad, req.user);
   }
 
+  @Roles(RolUsuario.ANFITRION, RolUsuario.ADMINISTRADOR)
+  @Post('regalar')
+  regalar(
+    @Param('eventoId', new ParseUUIDPipe()) eventoId: string,
+    @Body() datos: CrearPapeletasDto,
+    @Req() req: Request & { user: UsuarioAutenticado },
+  ) {
+    return this.servicio.regalar(
+      eventoId,
+      datos.participanteId,
+      datos.cantidad,
+      req.user,
+    );
+  }
+
   @Post('depositar')
   depositar(@Param('eventoId', new ParseUUIDPipe()) eventoId: string, @Body() datos: DepositarPapeletasDto, @Req() peticion: Request & { user: UsuarioAutenticado }) {
     return this.servicio.depositar(eventoId, peticion.user.id, datos.cantidad);

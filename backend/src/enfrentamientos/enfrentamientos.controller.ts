@@ -1,17 +1,28 @@
 
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Req } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Req,
+} from '@nestjs/common';
 import { Request } from 'express';
+
 import { Roles } from '../autenticacion/decoradores/roles.decorator';
 import { UsuarioAutenticado } from '../autenticacion/dominio/usuario-autenticado.interface';
 import { RolUsuario } from '../usuarios/dominio/rol-usuario.enum';
+
 import { CrearRetoDto } from './dto/crear-reto.dto';
 import { FinalizarPartidaDto } from './dto/finalizar-partida.dto';
 import { EnfrentamientosService } from './enfrentamientos.service';
 
 @Controller('eventos/:eventoId')
 export class EnfrentamientosController {
-  constructor(private readonly servicio: EnfrentamientosService) {}
-
+  constructor(
+    private readonly servicio: EnfrentamientosService,
+  ) {}
 
   @Get('puestos/disponibilidad')
   listarDisponibilidadPuestos(
@@ -19,7 +30,7 @@ export class EnfrentamientosController {
   ) {
     return this.servicio.listarDisponibilidadPuestos(eventoId);
   }
- 
+
   @Post('retos')
   enviarReto(
     @Param('eventoId', new ParseUUIDPipe()) eventoId: string,
@@ -91,5 +102,25 @@ export class EnfrentamientosController {
     @Param('eventoId', new ParseUUIDPipe()) eventoId: string,
   ) {
     return this.servicio.listarPartidas(eventoId);
+  }
+}
+
+/**
+ * Endpoints personales del jugador.
+ * No requieren indicar el ID de una edición.
+ */
+@Controller('partidas')
+export class MisPartidasController {
+  constructor(
+    private readonly servicio: EnfrentamientosService,
+  ) {}
+
+  @Get('mis-activas')
+  listarMisPartidasActivas(
+    @Req() peticion: Request & { user: UsuarioAutenticado },
+  ) {
+    return this.servicio.listarPartidasActivasPorUsuario(
+      peticion.user.id,
+    );
   }
 }

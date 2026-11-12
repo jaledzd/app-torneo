@@ -12,29 +12,120 @@ import { ParticipanteEntity } from '../participantes/dominio/participante.entity
 import { EstadoPapeleta } from './dominio/estado-papeleta.enum';
 import { PapeletaEntity } from './dominio/papeleta.entity';
 import { SorteoEntity } from './dominio/sorteo.entity';
+import { MovimientoApuchiCoinEntity } from '../apuchicoins/dominio/movimiento-apuchicoin.entity';
 
+const PRECIO_PAPELETA = 3;
 /** Gestiona la cartera, el cierre de la orla y el sorteo de una edición. */
 @Injectable()
 export class OrlaService {
   constructor(private readonly fuenteDatos: DataSource) {}
 
-  async emitir(eventoId: string, participanteId: string, cantidad: number, actor: UsuarioAutenticado): Promise<{ emitidas: number }> {
+  async emitir(
+    eventoId: string,
+    participanteId: string,
+    cantidad: number,
+    actor: UsuarioAutenticado,
+  ): Promise<{ emitidas: number; coste: number; saldoRestante: number }> {
     this.validarCantidad(cantidad, 500);
+
     return this.fuenteDatos.transaction(async (gestor) => {
-      const evento = await gestor.getRepository(EventoEntity).findOne({ where: { id: eventoId }, lock: { mode: 'pessimistic_write' } });
-      if (!evento) throw new NotFoundException('No se ha encontrado la edición');
-      this.autorizar(evento, actor);
-      if (evento.orlaCerradaEn || ![EstadoEvento.BORRADOR, EstadoEvento.EN_CURSO, EstadoEvento.PERIODO_ADICIONAL].includes(evento.estado)) {
-        throw new BadRequestException('No se pueden emitir papeletas en esta fase');
+      const evento = await gestor.getRepository(EventoEntity).findOne({
+        where: { id: eventoId },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!evento) {
+        throw new NotFoundException('No se ha encontrado la edición');
       }
-      const limite = this.limiteOrla(evento);
-      if (Date.now() >= limite) throw new BadRequestException('El plazo de emisión de papeletas ha terminado');
-      const participante = await gestor.getRepository(ParticipanteEntity).findOne({ where: { id: participanteId, eventoId, estado: EstadoParticipante.INSCRITO } });
-      if (!participante) throw new NotFoundException('No existe un participante inscrito en esta edición');
-      const repo = gestor.getRepository(PapeletaEntity);
-      const nuevas = Array.from({ length: cantidad }, () => repo.create({ eventoId, participanteId, estado: EstadoPapeleta.CARTERA, depositadaEn: null }));
-      await repo.save(nuevas);
-      return { emitidas: nuevas.length };
+
+      this.autorizar(evento, actor);
+
+      if (
+        evento.orlaCerradaEn ||
+        ![
+          EstadoEvento.BORRADOR,
+          EstadoEvento.EN_CURSO,
+          EstadoEvento.PERIODO_ADICIONAL,
+        ].includes(evento.estado)
+      ) {
+        throw new BadRequestException(
+          'No se pueden emitir papeletas en esta fase',
+        );
+      }
+
+      if (Date.now() >= this.limiteOrla(evento)) {
+        throw new BadRequestException(
+          'El plazo de emisión de papeletas ha terminado',
+        );
+      }
+
+      const participantes = gestor.getRepository(ParticipanteEntity);
+
+      const participante = await participantes.findOne({
+        where: {
+          id: participanteId,
+          eventoId,
+          estado: EstadoParticipante.INSCRITO,
+        },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!participante) {
+        throw new NotFoundException(
+          'No existe un participante inscrito en esta edición',
+        );
+      }
+
+      const coste = cantidad * PRECIO_PAPELETA;
+
+      // Descontamos las monedas solo si existe saldo suficiente.
+      const resultado = await gestor.query(
+        `UPDATE participantes
+        SET saldo_apuchicoins = saldo_apuchicoins - $1
+        WHERE id = $2
+          AND evento_id = $3
+          AND saldo_apuchicoins >= $1
+        RETURNING saldo_apuchicoins`,
+        [coste, participanteId, eventoId],
+      );
+
+      if (!resultado.length) {
+        throw new BadRequestException(
+          `El participante no tiene suficientes ApuchiCoins. Necesita ${coste} y dispone de ${participante.saldoApuchiCoins}.`,
+        );
+      }
+
+      // Creamos las papeletas.
+      const repoPapeletas = gestor.getRepository(PapeletaEntity);
+
+      const nuevas = Array.from(
+        { length: cantidad },
+        () =>
+          repoPapeletas.create({
+            eventoId,
+            participanteId,
+            estado: EstadoPapeleta.CARTERA,
+            depositadaEn: null,
+          }),
+      );
+
+      await repoPapeletas.save(nuevas);
+
+      // Registramos el gasto en el historial de monedas.
+      await gestor.getRepository(MovimientoApuchiCoinEntity).save({
+        eventoId,
+        participanteId,
+        partidaId: null,
+        cantidad: -coste,
+        motivo: 'COMPRA_PAPELETA',
+        descripcion: `Compra de ${cantidad} papeleta(s) a ${PRECIO_PAPELETA} ApuchiCoins cada una`,
+      });
+
+      return {
+        emitidas: nuevas.length,
+        coste,
+        saldoRestante: Number(resultado[0].saldo_apuchicoins),
+      };
     });
   }
 
@@ -95,6 +186,93 @@ export class OrlaService {
       return eventos.save(evento);
     });
   }
+
+  async regalar(
+  eventoId: string,
+  participanteId: string,
+  cantidad: number,
+  actor: UsuarioAutenticado,
+): Promise<{ regaladas: number }> {
+  this.validarCantidad(cantidad, 500);
+
+  return this.fuenteDatos.transaction(async (gestor) => {
+    const evento = await gestor.getRepository(EventoEntity).findOne({
+      where: { id: eventoId },
+      lock: { mode: 'pessimistic_write' },
+    });
+
+    if (!evento) {
+      throw new NotFoundException('No se ha encontrado la edición');
+    }
+
+    this.autorizar(evento, actor);
+
+    if (
+      evento.orlaCerradaEn ||
+      ![
+        EstadoEvento.BORRADOR,
+        EstadoEvento.EN_CURSO,
+        EstadoEvento.PERIODO_ADICIONAL,
+      ].includes(evento.estado)
+    ) {
+      throw new BadRequestException(
+        'No se pueden regalar papeletas en esta fase',
+      );
+    }
+
+    if (Date.now() >= this.limiteOrla(evento)) {
+      throw new BadRequestException(
+        'El plazo para regalar papeletas ha terminado',
+      );
+    }
+
+    const participante = await gestor
+      .getRepository(ParticipanteEntity)
+      .findOne({
+        where: {
+          id: participanteId,
+          eventoId,
+          estado: EstadoParticipante.INSCRITO,
+        },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+    if (!participante) {
+      throw new NotFoundException(
+        'No existe un participante inscrito en esta edición',
+      );
+    }
+
+    const repoPapeletas = gestor.getRepository(PapeletaEntity);
+
+    const nuevas = Array.from(
+      { length: cantidad },
+      () =>
+        repoPapeletas.create({
+          eventoId,
+          participanteId,
+          estado: EstadoPapeleta.CARTERA,
+          depositadaEn: null,
+        }),
+    );
+
+    await repoPapeletas.save(nuevas);
+
+    // Dejamos constancia del regalo sin modificar el saldo.
+    await gestor.getRepository(MovimientoApuchiCoinEntity).save({
+      eventoId,
+      participanteId,
+      partidaId: null,
+      cantidad: 0,
+      motivo: 'REGALO_PAPELETA',
+      descripcion: `Regalo de ${cantidad} papeleta(s) por el anfitrión`,
+    });
+
+    return {
+      regaladas: nuevas.length,
+    };
+  });
+}
 
   async realizarSorteo(eventoId: string, actor: UsuarioAutenticado): Promise<SorteoEntity> {
     return this.fuenteDatos.transaction(async (gestor) => {

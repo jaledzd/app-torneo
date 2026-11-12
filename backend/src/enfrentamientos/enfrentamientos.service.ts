@@ -7,7 +7,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
 import { ApuchiCoinsService } from '../apuchicoins/apuchicoins.service';
 import { UsuarioAutenticado } from '../autenticacion/dominio/usuario-autenticado.interface';
 import { RolUsuario } from '../usuarios/dominio/rol-usuario.enum';
@@ -21,6 +20,7 @@ import { EstadoPartida } from './dominio/estado-partida.enum';
 import { PartidaEntity } from './dominio/partida.entity';
 import { EstadoReto } from './dominio/estado-reto.enum';
 import { RetoEntity } from './dominio/reto.entity';
+import { DataSource, In, Repository } from 'typeorm';
 
 /** Coordina retos, disponibilidad y reservas transaccionales de recursos. */
 @Injectable()
@@ -33,7 +33,83 @@ export class EnfrentamientosService {
     private readonly partidas: Repository<PartidaEntity>,
     private readonly apuchiCoins: ApuchiCoinsService,
   ) {}
+  /**
+   * Devuelve las partidas que siguen activas para un usuario,
+   * independientemente de la edición en la que esté jugando.
+   */
+  async listarPartidasActivasPorUsuario(usuarioId: string) {
+    const partidas = await this.partidas
+      .createQueryBuilder('partida')
+      .leftJoinAndSelect('partida.participanteA', 'participanteA')
+      .leftJoinAndSelect('participanteA.usuario', 'usuarioA')
+      .leftJoinAndSelect('partida.participanteB', 'participanteB')
+      .leftJoinAndSelect('participanteB.usuario', 'usuarioB')
+      .leftJoinAndSelect('partida.puesto', 'puesto')
+      .leftJoinAndSelect('partida.videojuego', 'videojuego')
+      .where('partida.estado = :estado', {
+        estado: EstadoPartida.EN_CURSO,
+      })
+      .andWhere(
+        '(participanteA.usuarioId = :usuarioId OR participanteB.usuarioId = :usuarioId)',
+        { usuarioId },
+      )
+      .orderBy('partida.iniciadaEn', 'DESC')
+      .getMany();
 
+    if (partidas.length === 0) {
+      return [];
+    }
+
+    const eventoIds = [...new Set(partidas.map((p) => p.eventoId))];
+
+    const eventos = await this.fuenteDatos
+      .getRepository(EventoEntity)
+      .find({
+        where: { id: In(eventoIds) },
+      });
+
+    const eventosPorId = new Map(
+      eventos.map((evento) => [evento.id, evento]),
+    );
+
+    return partidas.map((partida) => {
+      const esParticipanteA =
+        partida.participanteA.usuarioId === usuarioId;
+
+      const rival = esParticipanteA
+        ? partida.participanteB
+        : partida.participanteA;
+
+      const evento = eventosPorId.get(partida.eventoId);
+
+      return {
+        id: partida.id,
+        eventoId: partida.eventoId,
+        evento: evento
+          ? {
+              id: evento.id,
+              premio: evento.premio,
+            }
+          : null,
+        estado: partida.estado,
+        iniciadaEn: partida.iniciadaEn,
+        videojuego: {
+          id: partida.videojuego.id,
+          nombre: partida.videojuego.nombre,
+          plataforma: partida.videojuego.plataforma,
+        },
+        puesto: {
+          id: partida.puesto.id,
+          codigo: partida.puesto.codigo,
+          descripcion: partida.puesto.descripcion,
+        },
+        rival: {
+          participanteId: rival.id,
+          nombreVisible: rival.usuario.nombreVisible,
+        },
+      };
+    });
+  }
   async enviarReto(
     eventoId: string,
     emisorUsuarioId: string,

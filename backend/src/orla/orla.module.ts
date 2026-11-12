@@ -7,9 +7,19 @@ import { PapeletaEntity } from './dominio/papeleta.entity';
 import { SorteoEntity } from './dominio/sorteo.entity';
 import { OrlaController } from './orla.controller';
 import { OrlaService } from './orla.service';
+import { MovimientoApuchiCoinEntity } from '../apuchicoins/dominio/movimiento-apuchicoin.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([EventoEntity, PartidaEntity, ParticipanteEntity, PapeletaEntity, SorteoEntity])],
+  imports: [
+  TypeOrmModule.forFeature([
+    EventoEntity,
+    PartidaEntity,
+    ParticipanteEntity,
+    PapeletaEntity,
+    SorteoEntity,
+    MovimientoApuchiCoinEntity,
+  ]),
+],
   controllers: [OrlaController],
   providers: [OrlaService],
   exports: [OrlaService],

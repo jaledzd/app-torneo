@@ -16,7 +16,7 @@ export default function Layout() {
     <Stack.Screen name="index" options={{ headerShown: false }} />
     <Stack.Screen name="(auth)" options={{ headerShown: false }} />
     <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-    <Stack.Screen name="evento/[id]" options={{ title: 'Edición' }} />
+    <Stack.Screen name="evento/[id]" options={{ headerShown: false }} />
     <Stack.Screen name="crear-evento" options={{ title: 'Nueva edición' }} />
   </Stack></AuthProvider>;
 }

@@ -1,7 +1,7 @@
 
 import React, { useCallback, useState } from 'react';
-import { useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { View } from 'react-native';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { Alert, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import {
@@ -208,6 +208,37 @@ export default function PanelAnfitrion() {
     );
   };
 
+  const confirmarEliminar = () => {
+    if (ocupado !== '') return;
+
+    Alert.alert(
+      'Eliminar edición definitivamente',
+      'Se eliminarán el torneo y todos sus datos: participantes, partidas, retos, puestos, papeletas, sorteos y movimientos de ApuchiCoins. Esta acción no se puede deshacer.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar definitivamente',
+          style: 'destructive',
+          onPress: () => {
+            setOcupado('eliminar');
+            setError('');
+            setExito('');
+
+            void (async () => {
+              try {
+                await api.delete(`/eventos/${id}`);
+                router.replace('/(tabs)');
+              } catch (x) {
+                setError(errorTexto(x));
+                setOcupado('');
+              }
+            })();
+          },
+        },
+      ],
+    );
+  };
+
   const navegar = (seccion: SeccionPanel) => {
     setSeccionActiva(seccion);
     setError('');
@@ -411,6 +442,28 @@ export default function PanelAnfitrion() {
                 onPress={() => navegar('resultados')}
               />
             ) : null}
+          </Tarjeta>
+
+          <Seccion
+            titulo="Zona peligrosa"
+            detalle="La eliminación es permanente y no se puede recuperar."
+          />
+
+          <Tarjeta>
+            <Titulo pequeno>Eliminar esta edición</Titulo>
+            <Secundario>
+              Se borrarán todos los datos vinculados a este torneo,
+              incluidos los movimientos de ApuchiCoins. Los videojuegos
+              del catálogo general no se eliminarán.
+            </Secundario>
+            <Boton
+              titulo="Eliminar torneo definitivamente"
+              icono="delete-forever"
+              secundario
+              cargando={ocupado === 'eliminar'}
+              deshabilitado={ocupado !== ''}
+              onPress={confirmarEliminar}
+            />
           </Tarjeta>
         </>
       )}

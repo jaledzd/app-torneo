@@ -35,6 +35,7 @@ import { tema } from '../../../constantes/tema';
 type SeccionPanel =
   | 'resumen'
   | 'papeletas'
+  | 'participantes'
   | 'videojuegos'
   | 'puestos'
   | 'resultados'
@@ -349,6 +350,14 @@ export default function PanelAnfitrion() {
         />
 
         <Boton
+          titulo="Participantes"
+          icono="account-group"
+          compacto
+          secundario={seccionActiva !== 'participantes'}
+          onPress={() => navegar('participantes')}
+        />
+
+        <Boton
           titulo="Videojuegos"
           icono="gamepad-variant"
           compacto
@@ -465,6 +474,78 @@ export default function PanelAnfitrion() {
               onPress={confirmarEliminar}
             />
           </Tarjeta>
+        </>
+      )}
+
+      {/* PARTICIPANTES */}
+      {seccionActiva === 'participantes' && (
+        <>
+          <Seccion
+            titulo="Gestión de participantes"
+            detalle="Consulta los jugadores inscritos y retira a quienes ya no deban formar parte de esta edición."
+          />
+
+          {participantes.length === 0 ? (
+            <Tarjeta>
+              <Secundario>No hay participantes inscritos en esta edición.</Secundario>
+            </Tarjeta>
+          ) : (
+            <View style={{ gap: 10 }}>
+              {participantes.map((p) => {
+                const nombre = p.usuario?.nombreVisible || 'Jugador';
+                const tienePartidaActiva = partidas.some(
+                  (partida) =>
+                    partida.estado === 'EN_CURSO' &&
+                    (partida.participanteAId === p.id || partida.participanteBId === p.id),
+                );
+
+                return (
+                  <Tarjeta key={p.id} estilo={{ gap: 11 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <View style={{ flex: 1, gap: 3 }}>
+                        <Titulo pequeno>{nombre}</Titulo>
+                        <Secundario>{p.usuario?.email || 'Correo no disponible'}</Secundario>
+                      </View>
+                      <Etiqueta tono={tienePartidaActiva ? 'amarillo' : 'verde'}>
+                        {tienePartidaActiva ? 'PARTIDA ACTIVA' : 'INSCRITO'}
+                      </Etiqueta>
+                    </View>
+                    <Boton
+                      titulo="Expulsar participante"
+                      icono="account-remove"
+                      peligro
+                      compacto
+                      deshabilitado={ocupado !== '' || tienePartidaActiva}
+                      cargando={ocupado === 'retirar-' + p.id}
+                      onPress={() => {
+                        Alert.alert(
+                          'Expulsar participante',
+                          '¿Seguro que quieres retirar a ' + nombre + ' de esta edición? Se conservará su cuenta y el historial de partidas.',
+                          [
+                            { text: 'Cancelar', style: 'cancel' },
+                            {
+                              text: 'Expulsar',
+                              style: 'destructive',
+                              onPress: () => {
+                                void ejecutar(
+                                  'retirar-' + p.id,
+                                  () => api.delete('/eventos/' + id + '/participantes/' + p.id),
+                                  nombre + ' ha sido retirado de la edición.',
+                                );
+                              },
+                            },
+                          ],
+                        );
+                      }}
+                    />
+                    {tienePartidaActiva ? (
+                      <Secundario>No se puede expulsar mientras tenga una partida en curso. Cuando finalice, podrás volver a intentarlo.</Secundario>
+                    ) : null}
+                  </Tarjeta>
+                );
+              })}
+            </View>
+          )}
         </>
       )}
 

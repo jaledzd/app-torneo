@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Req } from '@nestjs/common';
 import { Request } from 'express';
 import { Roles } from '../autenticacion/decoradores/roles.decorator';
 import { UsuarioAutenticado } from '../autenticacion/dominio/usuario-autenticado.interface';
@@ -30,6 +30,12 @@ export class EventosController {
   @Get(':id')
   obtenerPorId(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.eventosService.obtenerPorId(id);
+  }
+
+  @Roles(RolUsuario.ANFITRION, RolUsuario.ADMINISTRADOR)
+  @Delete(':id')
+  eliminar(@Param('id', new ParseUUIDPipe()) id: string, @Req() req: Request & { user: UsuarioAutenticado }) {
+    return this.eventosService.eliminar(id, req.user);
   }
 
   @Roles(RolUsuario.ANFITRION, RolUsuario.ADMINISTRADOR)

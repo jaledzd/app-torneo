@@ -28,6 +28,17 @@ export interface Partida {
   videojuego?: Videojuego;
 }
 
+export interface PartidaActiva {
+  id: string;
+  eventoId: string;
+  evento: { id: string; premio: string } | null;
+  estado: string;
+  iniciadaEn: string;
+  videojuego: { id: string; nombre: string; plataforma: string | null };
+  puesto: { id: string; codigo: string; descripcion: string | null };
+  rival: { participanteId: string; nombreVisible: string };
+}
+
 export interface Movimiento {
   id: string;
   cantidad: number;

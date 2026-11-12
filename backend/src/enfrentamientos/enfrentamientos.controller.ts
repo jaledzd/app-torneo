@@ -12,6 +12,14 @@ import { EnfrentamientosService } from './enfrentamientos.service';
 export class EnfrentamientosController {
   constructor(private readonly servicio: EnfrentamientosService) {}
 
+
+  @Get('puestos/disponibilidad')
+  listarDisponibilidadPuestos(
+    @Param('eventoId', new ParseUUIDPipe()) eventoId: string,
+  ) {
+    return this.servicio.listarDisponibilidadPuestos(eventoId);
+  }
+ 
   @Post('retos')
   enviarReto(
     @Param('eventoId', new ParseUUIDPipe()) eventoId: string,

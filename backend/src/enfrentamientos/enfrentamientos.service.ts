@@ -225,7 +225,7 @@ export class EnfrentamientosService {
     eventoId: string,
     retoId: string,
     destinatarioUsuarioId: string,
-  ): Promise<PartidaEntity> {
+  ): Promise<PartidaEntity | null> {
     return this.fuenteDatos.transaction(async (gestor) => {
       // Bloqueamos el evento para serializar las aceptaciones.
       const evento = await gestor.getRepository(EventoEntity).findOne({
@@ -360,9 +360,11 @@ export class EnfrentamientosService {
       });
 
       if (combinaciones.length === 0) {
-        throw new ConflictException(
-          'No hay puestos ni videojuegos disponibles para iniciar otra partida',
-        );
+        // La aceptación queda registrada aunque ahora no haya recursos libres.
+        reto.estado = EstadoReto.PENDIENTE_ASIGNACION;
+        reto.partidaId = null;
+        await retosRepo.save(reto);
+        return null;
       }
 
       // Elegimos aleatoriamente una combinación disponible.
@@ -398,6 +400,109 @@ export class EnfrentamientosService {
 
       return partida;
     });
+  }
+
+  /**
+   * Asigna automáticamente los retos aceptados que siguen esperando recursos.
+   * Debe ejecutarse dentro de una transacción que ya tenga bloqueada la edición.
+   */
+  private async asignarRetosPendientes(
+    gestor: import('typeorm').EntityManager,
+    eventoId: string,
+  ): Promise<void> {
+    const retosPendientes = await gestor.getRepository(RetoEntity).find({
+      where: {
+        eventoId,
+        estado: EstadoReto.PENDIENTE_ASIGNACION,
+        partidaId: null,
+      },
+      order: { creadoEn: 'ASC' },
+    });
+
+    for (const reto of retosPendientes) {
+      const ids = [reto.emisorId, reto.destinatarioId].sort();
+      const participantes = await gestor
+        .getRepository(ParticipanteEntity)
+        .find({
+          where: {
+            id: In(ids),
+            eventoId,
+            estado: EstadoParticipante.INSCRITO,
+          },
+        });
+
+      // Si alguno ya no está inscrito, el reto permanece sin asignación
+      // para que no se inicie una partida inválida.
+      if (participantes.length !== 2) continue;
+
+      const jugadoresActivos = await gestor.query(
+        'SELECT 1 FROM "partidas_jugadores_activos" WHERE "participante_id" = ANY($1::uuid[]) LIMIT 1',
+        [ids],
+      );
+      if (jugadoresActivos.length) continue;
+
+      const puestos = await gestor
+        .getRepository(PuestoEntity)
+        .createQueryBuilder('puesto')
+        .leftJoinAndSelect(
+          'puesto.videojuegos',
+          'videojuego',
+          'videojuego.activo = :activo',
+          { activo: true },
+        )
+        .where('puesto.evento_id = :eventoId', { eventoId })
+        .andWhere('puesto.activo = true')
+        .getMany();
+
+      const partidasActivas = await gestor
+        .getRepository(PartidaEntity)
+        .createQueryBuilder('partida')
+        .where('partida.evento_id = :eventoId', { eventoId })
+        .andWhere('partida.estado = :estado', {
+          estado: EstadoPartida.EN_CURSO,
+        })
+        .getMany();
+
+      const puestosOcupados = new Set(
+        partidasActivas.map((partida) => partida.puestoId),
+      );
+      const combinaciones = puestos.flatMap((puesto) => {
+        if (puestosOcupados.has(puesto.id)) return [];
+        return (puesto.videojuegos ?? [])
+          .filter((juego) => juego.activo)
+          .map((juego) => ({
+            puestoId: puesto.id,
+            videojuegoId: juego.id,
+          }));
+      });
+
+      // No hay recursos libres: se conserva el resto de la cola.
+      if (combinaciones.length === 0) return;
+
+      const seleccion =
+        combinaciones[Math.floor(Math.random() * combinaciones.length)];
+      const partida = await gestor.getRepository(PartidaEntity).save(
+        gestor.getRepository(PartidaEntity).create({
+          eventoId,
+          participanteAId: reto.emisorId,
+          participanteBId: reto.destinatarioId,
+          puestoId: seleccion.puestoId,
+          videojuegoId: seleccion.videojuegoId,
+          estado: EstadoPartida.EN_CURSO,
+          ganadorId: null,
+          finalizadaEn: null,
+        }),
+      );
+
+      await gestor.query(
+        'INSERT INTO "partidas_jugadores_activos" ("participante_id", "partida_id") VALUES ($1, $3), ($2, $3)',
+        [reto.emisorId, reto.destinatarioId, partida.id],
+      );
+
+      reto.estado = EstadoReto.ACEPTADO;
+      reto.partidaId = partida.id;
+      await gestor.getRepository(RetoEntity).save(reto);
+    }
   }
 
   async rechazarReto(
@@ -564,6 +669,10 @@ export class EnfrentamientosService {
         partida.id,
         descripcion,
       );
+
+      // Al liberar el puesto, rellenamos automáticamente los recursos libres
+      // con los retos aceptados que esperan asignación.
+      await this.asignarRetosPendientes(gestor, eventoId);
 
       return guardada;
     });

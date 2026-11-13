@@ -1,4 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { randomInt } from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { UsuarioAutenticado } from '../autenticacion/dominio/usuario-autenticado.interface';
@@ -26,12 +27,44 @@ export class EventosService {
     if (!premio) throw new BadRequestException('El premio no puede estar vacío');
     return this.eventosRepository.save(this.eventosRepository.create({
       anfitrionId: actor.id,
+      codigoAcceso: await this.generarCodigoAcceso(),
       fechaInicio: inicio,
       fechaCierreEnfrentamientos: cierre,
       duracionPeriodoAdicionalMinutos: dto.duracionPeriodoAdicionalMinutos,
       premio,
       estado: EstadoEvento.BORRADOR,
     }));
+  }
+
+  async obtenerCodigoAcceso(id: string, actor: UsuarioAutenticado): Promise<{ codigo: string }> {
+    const evento = await this.eventosRepository.createQueryBuilder('evento')
+      .addSelect('evento.codigoAcceso')
+      .where('evento.id = :id', { id })
+      .getOne();
+    if (!evento) throw new NotFoundException('No se ha encontrado la edición');
+    this.autorizar(evento, actor);
+    return { codigo: evento.codigoAcceso };
+  }
+
+  async regenerarCodigoAcceso(id: string, actor: UsuarioAutenticado): Promise<{ codigo: string }> {
+    return this.fuenteDatos.transaction(async (gestor) => {
+      const repo = gestor.getRepository(EventoEntity);
+      const evento = await repo.findOne({ where: { id }, lock: { mode: 'pessimistic_write' } });
+      if (!evento) throw new NotFoundException('No se ha encontrado la edición');
+      this.autorizar(evento, actor);
+      evento.codigoAcceso = await this.generarCodigoAcceso(repo);
+      await repo.save(evento);
+      return { codigo: evento.codigoAcceso };
+    });
+  }
+
+  private async generarCodigoAcceso(repo = this.eventosRepository): Promise<string> {
+    for (let intento = 0; intento < 30; intento++) {
+      const codigo = String(randomInt(100000, 1000000));
+      const existente = await repo.findOne({ where: { codigoAcceso: codigo } });
+      if (!existente) return codigo;
+    }
+    throw new BadRequestException('No se ha podido generar un código único. Inténtalo de nuevo.');
   }
 
   async asignarAnfitrion(id: string, dto: AsignarAnfitrionDto, actor: UsuarioAutenticado): Promise<EventoEntity> {

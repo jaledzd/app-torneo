@@ -177,7 +177,7 @@ export default function Detalle() {
           <Boton
             titulo="Inscribirme en la edición"
             icono="account-plus"
-            onPress={() => setModalCodigo(true)}
+            onPress={() => { setError(''); setModalCodigo(true); }}
             cargando={inscribiendo}
           />
         ) : (
@@ -297,6 +297,7 @@ export default function Detalle() {
               </Pressable>
             </View>
             <Secundario>Solicita al anfitrión el código privado de 6 dígitos para apuntarte a esta edición.</Secundario>
+            {error ? <Aviso mensaje={error} /> : null}
             <TextInput
               value={codigoAcceso}
               onChangeText={(valor) => setCodigoAcceso(valor.replace(/\D/g, '').slice(0, 6))}

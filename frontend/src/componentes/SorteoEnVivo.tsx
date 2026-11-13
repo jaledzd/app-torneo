@@ -64,20 +64,27 @@ export function SorteoEnVivo({ eventoId }: { eventoId?: string }) {
     const inicio = new Date(sorteo.animacionInicioEn).getTime();
     const progreso = Math.max(0, Math.min(1, (ahora - inicio) / DURACION_MS));
     movimiento.setValue(progreso);
-    if (progreso >= 1) {
+  }, [sorteo, ahora, movimiento]);
+
+  useEffect(() => {
+    if (!sorteo) return;
+    const restante = new Date(sorteo.revelarEn).getTime() - Date.now();
+    if (restante <= 0) {
       sacudida.stopAnimation();
       sacudida.setValue(0);
       return;
     }
-    const restante = Math.max(250, new Date(sorteo.revelarEn).getTime() - ahora);
     const animacion = Animated.loop(Animated.sequence([
       Animated.timing(sacudida, { toValue: 1, duration: 95, easing: Easing.linear, useNativeDriver: true }),
       Animated.timing(sacudida, { toValue: -1, duration: 95, easing: Easing.linear, useNativeDriver: true }),
     ]));
     animacion.start();
-    const detener = setTimeout(() => { animacion.stop(); Animated.timing(sacudida, { toValue: 0, duration: 350, useNativeDriver: true }).start(); }, restante);
+    const detener = setTimeout(() => {
+      animacion.stop();
+      Animated.timing(sacudida, { toValue: 0, duration: 350, useNativeDriver: true }).start();
+    }, restante);
     return () => { clearTimeout(detener); animacion.stop(); };
-  }, [sorteo, ahora, movimiento, sacudida]);
+  }, [sorteo, sacudida]);
 
   if (!sorteo || cerrado) return null;
 

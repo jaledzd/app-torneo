@@ -760,6 +760,70 @@ export class EnfrentamientosService {
       .getMany();
   }
 
+  async listarRetosPendientesAsignacionPorUsuario(
+    eventoId: string,
+    usuarioId: string,
+  ) {
+    const participante = await this.fuenteDatos
+      .getRepository(ParticipanteEntity)
+      .findOne({
+        where: {
+          eventoId,
+          usuarioId,
+          estado: EstadoParticipante.INSCRITO,
+        },
+      });
+
+    if (!participante) {
+      throw new NotFoundException(
+        'No estás inscrito en esta edición',
+      );
+    }
+
+    const retos = await this.retos
+      .createQueryBuilder('reto')
+      .where('reto.evento_id = :eventoId', { eventoId })
+      .andWhere('reto.estado = :estado', {
+        estado: EstadoReto.PENDIENTE_ASIGNACION,
+      })
+      .andWhere(
+        '(reto.emisor_id = :participanteId OR reto.destinatario_id = :participanteId)',
+        { participanteId: participante.id },
+      )
+      .orderBy('reto.creado_en', 'ASC')
+      .getMany();
+
+    if (retos.length === 0) return [];
+
+    const ids = [
+      ...new Set(
+        retos.flatMap((reto) => [reto.emisorId, reto.destinatarioId]),
+      ),
+    ];
+    const participantes = await this.fuenteDatos
+      .getRepository(ParticipanteEntity)
+      .find({
+        where: { id: In(ids) },
+        relations: { usuario: true },
+      });
+    const porId = new Map(
+      participantes.map((jugador) => [jugador.id, jugador]),
+    );
+
+    return retos.map((reto) => {
+      const esEmisor = reto.emisorId === participante.id;
+      const rival = porId.get(
+        esEmisor ? reto.destinatarioId : reto.emisorId,
+      );
+      return {
+        id: reto.id,
+        estado: reto.estado,
+        creadoEn: reto.creadoEn,
+        rival: rival?.usuario.nombreVisible ?? 'Participante',
+      };
+    });
+  }
+
   async listarDisponibilidadPuestos(eventoId: string) {
     const puestos = await this.fuenteDatos
       .getRepository(PuestoEntity)

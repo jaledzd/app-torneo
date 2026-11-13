@@ -47,4 +47,14 @@ export interface Movimiento {
   creadoEn: string;
 }
 export interface Cartera { cartera: number; orla: number }
-export interface Sorteo { eventoId: string; participanteGanadorId: string; premio: string; realizadoEn: string }
+export interface Sorteo {
+  id: string;
+  eventoId: string;
+  papeletaGanadoraId: string;
+  participanteGanadorId: string;
+  participanteGanador: { id: string; nombreVisible: string };
+  premio: string;
+  animacionInicioEn: string;
+  revelarEn: string;
+  realizadoEn: string;
+}

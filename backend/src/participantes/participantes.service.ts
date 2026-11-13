@@ -20,7 +20,11 @@ export class ParticipantesService {
 
   async inscribir(eventoId: string, usuarioId: string, codigoAcceso?: string, actor?: UsuarioAutenticado): Promise<ParticipanteEntity> {
     return this.fuenteDatos.transaction(async (gestor) => {
-      const evento = await gestor.getRepository(EventoEntity).findOne({ where: { id: eventoId }, lock: { mode: 'pessimistic_write' } });
+      const evento = await gestor.getRepository(EventoEntity).createQueryBuilder('evento')
+        .addSelect('evento.codigoAcceso')
+        .where('evento.id = :eventoId', { eventoId })
+        .setLock('pessimistic_write')
+        .getOne();
       if (!evento) throw new NotFoundException('No se ha encontrado la edición');
       if (actor) this.autorizar(evento, actor);
       else if (!codigoAcceso || evento.codigoAcceso !== codigoAcceso) throw new ForbiddenException('El código de acceso no es válido');

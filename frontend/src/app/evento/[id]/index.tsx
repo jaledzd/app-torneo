@@ -86,7 +86,7 @@ export default function Detalle() {
   );
 
   const inscribir = async () => {
-    if (!/^\\d{6}$/.test(codigoAcceso)) {
+    if (!/^\d{6}$/.test(codigoAcceso)) {
       setError('Introduce un código de acceso de 6 dígitos.');
       return;
     }

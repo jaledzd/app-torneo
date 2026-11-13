@@ -343,6 +343,9 @@ export class EnfrentamientosService {
       const puestosOcupados = new Set(
         partidasActivas.map((partida) => partida.puestoId),
       );
+      const videojuegosOcupados = new Set(
+        partidasActivas.map((partida) => partida.videojuegoId),
+      );
 
       // Construimos todas las combinaciones válidas.
       // Un mismo videojuego puede estar en distintos puestos libres.
@@ -352,7 +355,10 @@ export class EnfrentamientosService {
         }
 
         return (puesto.videojuegos ?? [])
-          .filter((juego) => juego.activo)
+          .filter(
+            (juego) =>
+              juego.activo && !videojuegosOcupados.has(juego.id),
+          )
           .map((juego) => ({
             puestoId: puesto.id,
             videojuegoId: juego.id,
@@ -466,10 +472,16 @@ export class EnfrentamientosService {
       const puestosOcupados = new Set(
         partidasActivas.map((partida) => partida.puestoId),
       );
+      const videojuegosOcupados = new Set(
+        partidasActivas.map((partida) => partida.videojuegoId),
+      );
       const combinaciones = puestos.flatMap((puesto) => {
         if (puestosOcupados.has(puesto.id)) return [];
         return (puesto.videojuegos ?? [])
-          .filter((juego) => juego.activo)
+          .filter(
+            (juego) =>
+              juego.activo && !videojuegosOcupados.has(juego.id),
+          )
           .map((juego) => ({
             puestoId: puesto.id,
             videojuegoId: juego.id,

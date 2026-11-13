@@ -15,6 +15,10 @@ import { SorteoEntity } from './dominio/sorteo.entity';
 import { MovimientoApuchiCoinEntity } from '../apuchicoins/dominio/movimiento-apuchicoin.entity';
 
 const PRECIO_PAPELETA = 3;
+
+interface SorteoConGanador extends SorteoEntity {
+  participanteGanador: { id: string; nombreVisible: string };
+}
 /** Gestiona la cartera, el cierre de la orla y el sorteo de una edición. */
 @Injectable()
 export class OrlaService {
@@ -274,8 +278,8 @@ export class OrlaService {
   });
 }
 
-  async realizarSorteo(eventoId: string, actor: UsuarioAutenticado): Promise<SorteoEntity> {
-    return this.fuenteDatos.transaction(async (gestor) => {
+  async realizarSorteo(eventoId: string, actor: UsuarioAutenticado): Promise<SorteoConGanador> {
+    const sorteo = await this.fuenteDatos.transaction(async (gestor) => {
       const eventos = gestor.getRepository(EventoEntity);
       const evento = await eventos.findOne({ where: { id: eventoId }, lock: { mode: 'pessimistic_write' } });
       if (!evento) throw new NotFoundException('No se ha encontrado la edición');
@@ -293,20 +297,50 @@ export class OrlaService {
       const repo = gestor.getRepository(PapeletaEntity);
       const papeletas = await repo.find({ where: { eventoId, estado: EstadoPapeleta.ORLA } });
       if (papeletas.length === 0) throw new BadRequestException('No hay papeletas depositadas para el sorteo');
+
+      // El ganador se decide y persiste una sola vez en el servidor.
       const ganadora = papeletas[randomInt(papeletas.length)];
       ganadora.estado = EstadoPapeleta.GANADORA;
       await repo.save(ganadora);
-      const sorteo = await sorteos.save(sorteos.create({ eventoId, papeletaGanadoraId: ganadora.id, participanteGanadorId: ganadora.participanteId, premio: evento.premio }));
+
+      // Todos los dispositivos usan estas mismas marcas temporales para sincronizar la animación.
+      const animacionInicioEn = new Date();
+      const revelarEn = new Date(animacionInicioEn.getTime() + 9000);
+      const resultado = await sorteos.save(sorteos.create({
+        eventoId,
+        papeletaGanadoraId: ganadora.id,
+        participanteGanadorId: ganadora.participanteId,
+        premio: evento.premio,
+        animacionInicioEn,
+        revelarEn,
+      }));
       evento.estado = EstadoEvento.FINALIZADO;
       await eventos.save(evento);
-      return sorteo;
+      return resultado;
     });
+
+    return this.detalleSorteo(sorteo);
   }
 
-  async obtenerSorteo(eventoId: string): Promise<SorteoEntity> {
+  async obtenerSorteo(eventoId: string): Promise<SorteoConGanador> {
     const sorteo = await this.fuenteDatos.getRepository(SorteoEntity).findOne({ where: { eventoId } });
     if (!sorteo) throw new NotFoundException('Todavía no se ha realizado el sorteo');
-    return sorteo;
+    return this.detalleSorteo(sorteo);
+  }
+
+  private async detalleSorteo(sorteo: SorteoEntity): Promise<SorteoConGanador> {
+    const participante = await this.fuenteDatos.getRepository(ParticipanteEntity).findOne({
+      where: { id: sorteo.participanteGanadorId, eventoId: sorteo.eventoId },
+      relations: { usuario: true },
+    });
+    if (!participante) throw new NotFoundException('No se ha encontrado al participante ganador');
+    return {
+      ...sorteo,
+      participanteGanador: {
+        id: participante.id,
+        nombreVisible: participante.usuario.nombreVisible,
+      },
+    };
   }
 
   private autorizar(evento: EventoEntity, actor: UsuarioAutenticado): void {

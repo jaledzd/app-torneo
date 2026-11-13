@@ -18,13 +18,13 @@ export class EventosController {
     return this.eventosService.crear(dto, req.user);
   }
 
-  @Roles(RolUsuario.ANFITRION, RolUsuario.ADMINISTRADOR)
+  @Roles(RolUsuario.ANFITRION)
   @Get(':id/codigo-acceso')
   obtenerCodigoAcceso(@Param('id', new ParseUUIDPipe()) id: string, @Req() req: Request & { user: UsuarioAutenticado }) {
     return this.eventosService.obtenerCodigoAcceso(id, req.user);
   }
 
-  @Roles(RolUsuario.ANFITRION, RolUsuario.ADMINISTRADOR)
+  @Roles(RolUsuario.ANFITRION)
   @Post(':id/codigo-acceso/regenerar')
   regenerarCodigoAcceso(@Param('id', new ParseUUIDPipe()) id: string, @Req() req: Request & { user: UsuarioAutenticado }) {
     return this.eventosService.regenerarCodigoAcceso(id, req.user);

@@ -50,6 +50,7 @@ export default function PanelAnfitrion() {
   const [juegos, setJuegos] = useState<Videojuego[]>([]);
   const [puestos, setPuestos] = useState<Puesto[]>([]);
   const [partidas, setPartidas] = useState<Partida[]>([]);
+  const [codigoAcceso, setCodigoAcceso] = useState('');
 
   const [participante, setParticipante] = useState('');
   const [cantidad, setCantidad] = useState('1');
@@ -72,12 +73,13 @@ export default function PanelAnfitrion() {
     setError('');
 
     try {
-      const [e, p, j, pu, pa] = await Promise.all([
+      const [e, p, j, pu, pa, codigo] = await Promise.all([
         api.get<Evento>(`/eventos/${id}`),
         api.get<Participante[]>(`/eventos/${id}/participantes`),
         api.get<Videojuego[]>('/videojuegos'),
         api.get<Puesto[]>(`/eventos/${id}/puestos`),
         api.get<Partida[]>(`/eventos/${id}/partidas`),
+        api.get<{ codigo: string }>(`/eventos/${id}/codigo-acceso`),
       ]);
 
       setEvento(e);
@@ -85,6 +87,7 @@ export default function PanelAnfitrion() {
       setJuegos(j);
       setPuestos(pu);
       setPartidas(pa);
+      setCodigoAcceso(codigo.codigo);
     } catch (x) {
       setError(errorTexto(x));
     } finally {
@@ -394,6 +397,17 @@ export default function PanelAnfitrion() {
 
       {seccionActiva === 'resumen' && (
         <>
+          <Seccion titulo="Acceso de participantes" detalle="Comparte este código solo con las personas que quieras admitir en la edición." />
+          <Tarjeta estilo={{ gap: 12 }}>
+            <Etiqueta tono="verde">CÓDIGO PRIVADO</Etiqueta>
+            <Titulo grande>{codigoAcceso || '------'}</Titulo>
+            <Secundario>Solo el anfitrión puede consultar este código. Los jugadores lo necesitan para apuntarse.</Secundario>
+            <Boton titulo="Regenerar código" icono="refresh" secundario deshabilitado={ocupado !== ''} cargando={ocupado === 'codigo'} onPress={() => void ejecutar('codigo', async () => {
+              const respuesta = await api.post<{ codigo: string }>(`/eventos/${id}/codigo-acceso/regenerar`);
+              setCodigoAcceso(respuesta.codigo);
+            }, 'Código de acceso regenerado. El anterior ya no es válido.')} />
+          </Tarjeta>
+
           <Seccion
             titulo="Control de la competición"
             detalle="Gestiona el estado general de la edición."

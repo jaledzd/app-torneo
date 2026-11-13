@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Modal, Pressable, Text, View } from 'react-native';
+import { Modal, Pressable, Text, TextInput, View } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
@@ -38,6 +38,8 @@ export default function Detalle() {
   const [error, setError] = useState('');
   const [errorPartida, setErrorPartida] = useState('');
   const [inscribiendo, setInscribiendo] = useState(false);
+  const [modalCodigo, setModalCodigo] = useState(false);
+  const [codigoAcceso, setCodigoAcceso] = useState('');
 
   const cargar = useCallback(async (silencioso = false) => {
     if (!silencioso) setCarga(true);
@@ -84,11 +86,17 @@ export default function Detalle() {
   );
 
   const inscribir = async () => {
+    if (!/^\\d{6}$/.test(codigoAcceso)) {
+      setError('Introduce un código de acceso de 6 dígitos.');
+      return;
+    }
     setInscribiendo(true);
     setError('');
     try {
-      await api.post('/eventos/' + id + '/participantes/inscribirme');
+      await api.post('/eventos/' + id + '/participantes/inscribirme', { codigo: codigoAcceso });
       setInscrito(true);
+      setModalCodigo(false);
+      setCodigoAcceso('');
     } catch (e) {
       setError(errorTexto(e));
     } finally {
@@ -169,7 +177,7 @@ export default function Detalle() {
           <Boton
             titulo="Inscribirme en la edición"
             icono="account-plus"
-            onPress={() => void inscribir()}
+            onPress={() => setModalCodigo(true)}
             cargando={inscribiendo}
           />
         ) : (
@@ -273,6 +281,36 @@ export default function Detalle() {
           />
         </>
       ) : null}
+
+      <Modal
+        visible={modalCodigo}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setModalCodigo(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.72)', justifyContent: 'center', padding: 22 }}>
+          <View style={{ backgroundColor: tema.colores.superficie, borderColor: tema.colores.borde, borderWidth: 1, borderRadius: 20, padding: 20, gap: 14 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Titulo pequeno>Código de inscripción</Titulo>
+              <Pressable onPress={() => setModalCodigo(false)} hitSlop={12}>
+                <MaterialCommunityIcons name="close" color={tema.colores.texto} size={22} />
+              </Pressable>
+            </View>
+            <Secundario>Solicita al anfitrión el código privado de 6 dígitos para apuntarte a esta edición.</Secundario>
+            <TextInput
+              value={codigoAcceso}
+              onChangeText={(valor) => setCodigoAcceso(valor.replace(/\\D/g, '').slice(0, 6))}
+              placeholder="000000"
+              placeholderTextColor={tema.colores.secundario}
+              keyboardType="number-pad"
+              maxLength={6}
+              textAlign="center"
+              style={{ color: tema.colores.texto, backgroundColor: tema.colores.fondo, borderWidth: 1, borderColor: tema.colores.borde, borderRadius: 12, padding: 14, fontSize: 25, letterSpacing: 8, fontWeight: '700' }}
+            />
+            <Boton titulo="Confirmar inscripción" icono="account-check" cargando={inscribiendo} deshabilitado={inscribiendo || codigoAcceso.length !== 6} onPress={() => void inscribir()} />
+          </View>
+        </View>
+      </Modal>
 
       <Modal
         visible={menuVisible}

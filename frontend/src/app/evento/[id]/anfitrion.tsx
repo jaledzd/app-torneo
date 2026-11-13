@@ -400,7 +400,7 @@ export default function PanelAnfitrion() {
           <Seccion titulo="Acceso de participantes" detalle="Comparte este código solo con las personas que quieras admitir en la edición." />
           <Tarjeta estilo={{ gap: 12 }}>
             <Etiqueta tono="verde">CÓDIGO PRIVADO</Etiqueta>
-            <Titulo grande>{codigoAcceso || '------'}</Titulo>
+            <Titulo pequeno>{codigoAcceso || '------'}</Titulo>
             <Secundario>Solo el anfitrión puede consultar este código. Los jugadores lo necesitan para apuntarse.</Secundario>
             <Boton titulo="Regenerar código" icono="refresh" secundario deshabilitado={ocupado !== ''} cargando={ocupado === 'codigo'} onPress={() => void ejecutar('codigo', async () => {
               const respuesta = await api.post<{ codigo: string }>(`/eventos/${id}/codigo-acceso/regenerar`);

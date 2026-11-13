@@ -11,8 +11,8 @@ export class ParticipantesController {
   constructor(private readonly servicio: ParticipantesService) {}
 
   @Post('inscribirme')
-  inscribirme(@Param('eventoId', new ParseUUIDPipe()) eventoId: string, @Req() peticion: Request & { user: UsuarioAutenticado }) {
-    return this.servicio.inscribir(eventoId, peticion.user.id);
+  inscribirme(@Param('eventoId', new ParseUUIDPipe()) eventoId: string, @Body() dto: InscribirParticipanteDto, @Req() peticion: Request & { user: UsuarioAutenticado }) {
+    return this.servicio.inscribir(eventoId, peticion.user.id, dto.codigo);
   }
 
   @Get('yo')

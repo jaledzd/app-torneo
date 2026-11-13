@@ -4,6 +4,7 @@ import { Roles } from '../autenticacion/decoradores/roles.decorator';
 import { UsuarioAutenticado } from '../autenticacion/dominio/usuario-autenticado.interface';
 import { RolUsuario } from '../usuarios/dominio/rol-usuario.enum';
 import { InscribirParticipanteDto } from './dto/inscribir-participante.dto';
+import { CodigoAccesoParticipanteDto } from './dto/codigo-acceso-participante.dto';
 import { ParticipantesService } from './participantes.service';
 
 @Controller('eventos/:eventoId/participantes')
@@ -11,7 +12,7 @@ export class ParticipantesController {
   constructor(private readonly servicio: ParticipantesService) {}
 
   @Post('inscribirme')
-  inscribirme(@Param('eventoId', new ParseUUIDPipe()) eventoId: string, @Body() dto: InscribirParticipanteDto, @Req() peticion: Request & { user: UsuarioAutenticado }) {
+  inscribirme(@Param('eventoId', new ParseUUIDPipe()) eventoId: string, @Body() dto: CodigoAccesoParticipanteDto, @Req() peticion: Request & { user: UsuarioAutenticado }) {
     return this.servicio.inscribir(eventoId, peticion.user.id, dto.codigo);
   }
 

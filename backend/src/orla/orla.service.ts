@@ -16,8 +16,11 @@ import { MovimientoApuchiCoinEntity } from '../apuchicoins/dominio/movimiento-ap
 
 const PRECIO_PAPELETA = 3;
 
-interface SorteoConGanador extends SorteoEntity {
-  participanteGanador: { id: string; nombreVisible: string };
+export interface SorteoConGanador extends SorteoEntity {
+  participanteGanador: {
+    id: string;
+    nombreVisible: string;
+  };
 }
 /** Gestiona la cartera, el cierre de la orla y el sorteo de una edición. */
 @Injectable()

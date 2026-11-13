@@ -55,6 +55,17 @@ export class EnfrentamientosController {
     );
   }
 
+  @Get('retos/pendientes-asignacion')
+  retosPendientesAsignacion(
+    @Param('eventoId', new ParseUUIDPipe()) eventoId: string,
+    @Req() peticion: Request & { user: UsuarioAutenticado },
+  ) {
+    return this.servicio.listarRetosPendientesAsignacionPorUsuario(
+      eventoId,
+      peticion.user.id,
+    );
+  }
+
   @Post('retos/:retoId/aceptar')
   aceptarReto(
     @Param('eventoId', new ParseUUIDPipe()) eventoId: string,

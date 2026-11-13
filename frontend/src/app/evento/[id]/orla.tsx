@@ -46,7 +46,7 @@ export default function Orla() {
       <Etiqueta tono="verde">SORTEO REALIZADO</Etiqueta>
       <MaterialCommunityIcons name="trophy-award" color={tema.colores.primario} size={42} />
       <Titulo>{sorteo.premio}</Titulo>
-      <Secundario>Participante ganador · {sorteo.participanteGanadorId}</Secundario>
+      <Secundario>Ganador · {sorteo.participanteGanador.nombreVisible}</Secundario>
       <Secundario>Realizado · {fecha(sorteo.realizadoEn)}</Secundario>
     </Tarjeta> : <Tarjeta>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}><MaterialCommunityIcons name="gift-outline" color={tema.colores.primario} size={23} /><Titulo pequeno>El premio espera a su ganador</Titulo></View>

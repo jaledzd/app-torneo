@@ -299,7 +299,7 @@ export default function Detalle() {
             <Secundario>Solicita al anfitrión el código privado de 6 dígitos para apuntarte a esta edición.</Secundario>
             <TextInput
               value={codigoAcceso}
-              onChangeText={(valor) => setCodigoAcceso(valor.replace(/\\D/g, '').slice(0, 6))}
+              onChangeText={(valor) => setCodigoAcceso(valor.replace(/\D/g, '').slice(0, 6))}
               placeholder="000000"
               placeholderTextColor={tema.colores.secundario}
               keyboardType="number-pad"

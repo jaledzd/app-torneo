@@ -27,6 +27,7 @@ export default function Retos() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const [retos, setRetos] = useState<Reto[]>([]);
+  const [retosEnEspera, setRetosEnEspera] = useState<{ id: string; creadoEn: string; rival: string }[]>([]);
   const [jugadores, setJugadores] = useState<Disponible[]>([]);
   const [error, setError] = useState('');
   const [carga, setCarga] = useState(true);
@@ -38,15 +39,19 @@ export default function Retos() {
     setError('');
 
     try {
-      const [r, j] = await Promise.all([
+      const [r, j, espera] = await Promise.all([
         api.get<Reto[]>(`/eventos/${id}/retos/recibidos`),
         api.get<Disponible[]>(
           `/eventos/${id}/participantes/disponibles`,
+        ),
+        api.get<{ id: string; creadoEn: string; rival: string }[]>(
+          `/eventos/${id}/retos/pendientes-asignacion`,
         ),
       ]);
 
       setRetos(r);
       setJugadores(j);
+      setRetosEnEspera(espera);
     } catch (e) {
       setError(errorTexto(e));
     } finally {
@@ -212,6 +217,43 @@ export default function Retos() {
                 )
               }
             />
+          </Tarjeta>
+        ))
+      )}
+
+      <Seccion
+        titulo="Esperando puesto"
+        detalle={`${retosEnEspera.length} retos aceptados pendientes de asignación`}
+      />
+
+      {retosEnEspera.length === 0 ? (
+        <Secundario>
+          No tienes enfrentamientos esperando un puesto.
+        </Secundario>
+      ) : (
+        retosEnEspera.map((r) => (
+          <Tarjeta key={r.id}>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 10,
+              }}
+            >
+              <MaterialCommunityIcons
+                name="timer-sand"
+                color={tema.colores.primario}
+                size={25}
+              />
+              <View style={{ flex: 1 }}>
+                <Titulo pequeno>Reto aceptado · {r.rival}</Titulo>
+                <Secundario>
+                  En cuanto se libere un puesto compatible, el sistema
+                  asignará automáticamente el videojuego y la partida.
+                </Secundario>
+              </View>
+              <Etiqueta tono="amarillo">EN ESPERA</Etiqueta>
+            </View>
           </Tarjeta>
         ))
       )}

@@ -18,11 +18,12 @@ export class ParticipantesService {
     @InjectRepository(EventoEntity) private readonly eventos: Repository<EventoEntity>,
   ) {}
 
-  async inscribir(eventoId: string, usuarioId: string, actor?: UsuarioAutenticado): Promise<ParticipanteEntity> {
+  async inscribir(eventoId: string, usuarioId: string, codigoAcceso?: string, actor?: UsuarioAutenticado): Promise<ParticipanteEntity> {
     return this.fuenteDatos.transaction(async (gestor) => {
       const evento = await gestor.getRepository(EventoEntity).findOne({ where: { id: eventoId }, lock: { mode: 'pessimistic_write' } });
       if (!evento) throw new NotFoundException('No se ha encontrado la edición');
       if (actor) this.autorizar(evento, actor);
+      else if (!codigoAcceso || evento.codigoAcceso !== codigoAcceso) throw new ForbiddenException('El código de acceso no es válido');
       if (evento.estado !== EstadoEvento.BORRADOR && evento.estado !== EstadoEvento.EN_CURSO) throw new BadRequestException('La edición no admite nuevas inscripciones');
       if (evento.estado === EstadoEvento.EN_CURSO && Date.now() >= evento.fechaCierreEnfrentamientos.getTime()) throw new BadRequestException('Ha terminado el plazo de inscripción');
       const usuario = await gestor.getRepository(UsuarioEntity).findOne({ where: { id: usuarioId, activo: true } });
@@ -39,7 +40,7 @@ export class ParticipantesService {
   }
 
   async inscribirPorAnfitrion(eventoId: string, usuarioId: string, actor: UsuarioAutenticado): Promise<ParticipanteEntity> {
-    return this.inscribir(eventoId, usuarioId, actor);
+    return this.inscribir(eventoId, usuarioId, undefined, actor);
   }
 
   async listar(eventoId: string, actor: UsuarioAutenticado): Promise<ParticipanteEntity[]> {

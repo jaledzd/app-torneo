@@ -40,7 +40,6 @@ export function SorteoEnVivo({ eventoId }: { eventoId?: string }) {
         const resultado = await api.get<Sorteo>(`/eventos/${eventoId}/orla/sorteo`);
         if (activo) {
           setSorteo(actual => actual?.id === resultado.id ? actual : resultado);
-          setCerrado(false);
         }
       } catch {
         // Un 404 significa que aún no se ha realizado el sorteo.

@@ -15,6 +15,9 @@ export class EventoEntity {
   @JoinColumn({ name: 'anfitrion_id' })
   anfitrion: UsuarioEntity | null;
 
+  @Column({ type: 'varchar', length: 6, name: 'codigo_acceso', unique: true, select: false })
+  codigoAcceso: string;
+
   @Column({ type: 'timestamptz', name: 'fecha_inicio' })
   fechaInicio: Date;
 

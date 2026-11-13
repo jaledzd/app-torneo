@@ -31,6 +31,7 @@ export function SorteoEnVivo({ eventoId }: { eventoId?: string }) {
   const [cerrado, setCerrado] = useState(false);
   const movimiento = useRef(new Animated.Value(0)).current;
   const sacudida = useRef(new Animated.Value(0)).current;
+  const lluvia = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (!eventoId) return;
@@ -57,6 +58,13 @@ export function SorteoEnVivo({ eventoId }: { eventoId?: string }) {
     const intervalo = setInterval(actualizar, 80);
     return () => clearInterval(intervalo);
   }, [sorteo]);
+
+  useEffect(() => {
+    if (!sorteo) return;
+    const animacion = Animated.loop(Animated.timing(lluvia, { toValue: 1, duration: 2200, easing: Easing.linear, useNativeDriver: true }));
+    animacion.start();
+    return () => animacion.stop();
+  }, [sorteo, lluvia]);
 
   useEffect(() => {
     if (!sorteo) return;
@@ -98,9 +106,9 @@ export function SorteoEnVivo({ eventoId }: { eventoId?: string }) {
   return (
     <Modal visible transparent animationType="fade" statusBarTranslucent onRequestClose={() => { if (revelado) setCerrado(true); }}>
       <View style={{ flex: 1, backgroundColor: 'rgba(3,7,5,0.97)', justifyContent: 'center', alignItems: 'center', padding: 22 }}>
-        {revelado ? CONFETI.map((pieza, i) => (
-          <View key={i} pointerEvents="none" style={{ position: 'absolute', left: `${pieza.left}%`, top: `${pieza.top}%`, width: pieza.ancho, height: pieza.alto, borderRadius: 2, backgroundColor: i % 4 === 0 ? '#A7F432' : '#D6A843', transform: [{ rotate: `${pieza.giro}deg` }] }} />
-        )) : null}
+        {CONFETI.map((pieza, i) => (
+          <Animated.View key={i} pointerEvents="none" style={{ position: 'absolute', left: `${pieza.left}%`, top: `${pieza.top}%`, width: pieza.ancho, height: pieza.alto, borderRadius: 2, backgroundColor: i % 5 === 0 ? '#A7F432' : '#D6A843', opacity: lluvia.interpolate({ inputRange: [0, 0.12, 0.88, 1], outputRange: [0, 1, 1, 0] }), transform: [{ translateY: lluvia.interpolate({ inputRange: [0, 1], outputRange: [-35, 850] }) }, { rotate: `${pieza.giro}deg` }] }} />
+        ))}
 
         <View style={{ width: '100%', maxWidth: 440, alignItems: 'center', gap: 20 }}>
           <Text style={{ color: tema.colores.primario, fontFamily: 'Inter_700Bold', fontSize: 11, letterSpacing: 3 }}>APUCHITORNEO · GRAN SORTEO</Text>
